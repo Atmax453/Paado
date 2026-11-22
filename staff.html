@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#03211f">
+<title>Paado Gate · Staff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--deep:#03211f;--lagoon:#063a3f;--sun:#ff6a1a;--sun-2:#ffb21f;--cream:#fff8ea;--ink:#0b0b0b;--ok:#18a058;--bad:#d32f2f;--warn:#f59e0b;
+  --display:'Anton',Impact,sans-serif;--body:'Bricolage Grotesque',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--body);background:var(--deep);color:var(--cream);overflow:hidden}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column}
+.hide{display:none!important}
+/* login */
+.login{align-items:center;justify-content:center;padding:24px;text-align:center}
+.login h1{font-family:var(--display);font-size:2.6rem;line-height:1;text-transform:uppercase}
+.login h1 span{color:var(--sun-2)}
+.login p{opacity:.7;font-weight:600;margin:8px 0 22px}
+.dots{display:flex;gap:12px;justify-content:center;margin-bottom:22px}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--cream);opacity:.6}
+.dots i.f{background:var(--sun-2);border-color:var(--sun-2);opacity:1}
+.pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;justify-content:center}
+.pad button{height:76px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--cream);font:400 1.9rem var(--display);cursor:pointer}
+.pad button:active{background:var(--sun-2);color:var(--ink)}
+.err{color:#ff8a80;font-weight:800;min-height:1.4em;margin-top:16px}
+/* scanner */
+.top{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:rgba(3,33,31,.9);z-index:3}
+.top b{font-family:var(--display);font-size:1.1rem;letter-spacing:.02em}
+.top small{display:block;font-weight:700;opacity:.7;font-size:.75rem}
+.count{font-family:var(--display);font-size:1.5rem;text-align:right;line-height:1}
+.count small{font-family:var(--body)}
+.cam{position:relative;flex:1;background:#000;overflow:hidden}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;left:50%;top:46%;width:min(68vw,320px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:24px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.frame::before,.frame::after{content:"";position:absolute;inset:-3px;border-radius:24px;border:4px solid var(--sun-2);clip-path:polygon(0 0,30% 0,30% 4px,4px 4px,4px 30%,0 30%,0 70%,4px 70%,4px calc(100% - 4px),30% calc(100% - 4px),30% 100%,70% 100%,70% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 70%,100% 70%,100% 30%,calc(100% - 4px) 30%,calc(100% - 4px) 4px,70% 4px,70% 0,100% 0,100% 100%,0 100%)}
+.frame::after{display:none}
+.hint{position:absolute;left:0;right:0;bottom:22%;text-align:center;font-weight:800;text-shadow:0 2px 8px #000}
+.camerr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;font-weight:700}
+.bottom{padding:12px 16px calc(env(safe-area-inset-bottom) + 14px);background:var(--deep);display:flex;gap:10px}
+.bottom input{flex:1;padding:14px 16px;border-radius:14px;border:0;font:800 1.05rem var(--body);text-transform:uppercase}
+.btn{border:0;border-radius:14px;padding:14px 18px;font:800 1rem var(--body);cursor:pointer;background:var(--sun-2);color:var(--ink)}
+.btn.dark{background:rgba(255,255,255,.1);color:var(--cream)}
+/* result */
+.result{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;gap:6px}
+.result.valid{background:var(--ok)}.result.admitted{background:var(--ok)}.result.used{background:var(--bad)}.result.invalid{background:var(--bad)}.result.unpaid{background:var(--warn);color:var(--ink)}
+.result .big{font-family:var(--display);font-size:clamp(3rem,16vw,5.5rem);line-height:.95;text-transform:uppercase}
+.result .nm{font-size:1.5rem;font-weight:800;margin-top:10px}
+.result .meta{font-weight:700;opacity:.9;font-size:1.05rem}
+.result .code{font-family:ui-monospace,Menlo,monospace;font-weight:800;opacity:.85;margin-top:4px}
+.result .acts{display:flex;flex-direction:column;gap:10px;width:min(360px,100%);margin-top:26px}
+.result .acts .btn{padding:18px;font-size:1.15rem;background:#fff;color:var(--ink)}
+.result .acts .btn.ghost{background:rgba(0,0,0,.18);color:inherit}
+.ppl{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.ppl i{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.35)}.ppl i.u{background:#fff}
+</style>
+</head>
+<body>
+
+<div class="screen login" id="loginS">
+  <h1>Paado <span>Gate</span></h1>
+  <p>Enter your 6-digit staff PIN</p>
+  <div class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="pad" id="pad"></div>
+  <div class="err" id="perr"></div>
+</div>
+
+<div class="screen hide" id="scanS">
+  <div class="top"><div><b>PAADO GATE</b><small id="staffName"></small></div><div class="count"><span id="inCount">0</span><small> / <span id="soldCount">0</span> in</small></div></div>
+  <div class="cam" id="cam">
+    <video id="vid" playsinline muted></video>
+    <div class="frame"></div>
+    <div class="hint" id="hint">Point at the ticket QR code</div>
+    <div class="camerr hide" id="camErr"></div>
+  </div>
+  <form class="bottom" id="manF"><input id="manCode" placeholder="Or type code: PIE-XXXXXX" autocomplete="off"><button class="btn">Check</button><button type="button" class="btn dark" id="out">Exit</button></form>
+</div>
+
+<div class="result hide" id="res"></div>
+<canvas id="cv" class="hide"></canvas>
+
+<script src="assets/js/jsQR.js"></script>
+<script>
+const API="https://xzeahvkmvrdpxcfsgwqh.supabase.co/functions/v1/paado-tickets",ANON="sb_publishable_LCRngOPZzgc6E-QwT6jjZQ_hb0qqLjY";
+const $=id=>document.getElementById(id);
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api=b=>fetch(API,{method:'POST',headers:{'content-type':'application/json',apikey:ANON},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({error:'No connection. Check your internet.'}));
+let PIN=sessionStorage.getItem('paado_pin')||'',entry='',busy=false,stream=null,lastCode='',lastAt=0;
+
+/* ---------- PIN pad ---------- */
+$('pad').innerHTML=[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('');
+$('pad').onclick=e=>{const k=e.target.dataset.k;if(k==null)return;
+  if(k==='⌫')entry=entry.slice(0,-1);else if(entry.length<6)entry+=k;
+  [...$('dots').children].forEach((d,i)=>d.classList.toggle('f',i<entry.length));
+  if(entry.length===6)login(entry)};
+async function login(pin){$('perr').textContent='Checking…';
+  const r=await api({action:'staff_login',pin});
+  if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';entry='';[...$('dots').children].forEach(d=>d.classList.remove('f'));sessionStorage.removeItem('paado_pin');return}
+  PIN=pin;sessionStorage.setItem('paado_pin',pin);$('staffName').textContent=r.name;setCounts(r.checked_in,r.sold);
+  $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam()}
+function setCounts(i,s){if(i!=null)$('inCount').textContent=i;if(s!=null)$('soldCount').textContent=s}
+$('out').onclick=()=>{sessionStorage.removeItem('paado_pin');location.reload()};
+
+/* ---------- camera + QR ---------- */
+async function startCam(){
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
+    const v=$('vid');v.srcObject=stream;await v.play();requestAnimationFrame(scan)}
+  catch(e){$('camErr').classList.remove('hide');$('camErr').textContent='Camera not available. Allow camera access in your browser settings, or type the ticket code below.'}}
+const cv=$('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+function scan(){
+  const v=$('vid');
+  if(!busy&&v.readyState===v.HAVE_ENOUGH_DATA){
+    const s=Math.min(v.videoWidth,v.videoHeight),w=Math.min(640,s);cv.width=w;cv.height=w;
+    ctx.drawImage(v,(v.videoWidth-s)/2,(v.videoHeight-s)/2,s,s,0,0,w,w);
+    const img=ctx.getImageData(0,0,w,w);const code=jsQR(img.data,w,w,{inversionAttempts:'dontInvert'});
+    if(code&&code.data){const m=code.data.toUpperCase().match(/PIE-[A-Z0-9]{4,10}/);
+      if(m&&!(m[0]===lastCode&&Date.now()-lastAt<4000)){lastCode=m[0];lastAt=Date.now();check(m[0])}}
+  }
+  requestAnimationFrame(scan)}
+$('manF').onsubmit=e=>{e.preventDefault();const c=$('manCode').value.trim();if(c){check(c.toUpperCase().startsWith('PIE-')?c:'PIE-'+c);$('manCode').value='';$('manCode').blur()}};
+
+/* ---------- check + admit ---------- */
+function buzz(ok){try{navigator.vibrate&&navigator.vibrate(ok?80:[120,60,120]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.35))}catch(e){}}
+function dots(total,used){return `<div class="ppl">${Array.from({length:Math.min(total,20)},(_,i)=>`<i class="${i<used?'u':''}"></i>`).join('')}</div>`}
+function show(cls,html){const r=$('res');r.className='result '+cls;r.innerHTML=html;r.classList.remove('hide')}
+function done(){$('res').classList.add('hide');busy=false}
+async function check(code){
+  busy=true;show('valid',`<div class="big">…</div><div class="code">${esc(code)}</div>`);$('res').style.background='#0f6b70';
+  const r=await api({action:'lookup',pin:PIN,code});$('res').style.background='';
+  if(r.error){if(/PIN/.test(r.error)){$('out').click();return}show('invalid',`<div class="big">Error</div><div class="meta">${esc(r.error)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);buzz(false);return}
+  if(r.result==='invalid'){buzz(false);return show('invalid',`<div class="big">Not valid</div><div class="meta">No ticket with this code.</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
+  if(r.result==='unpaid'){buzz(false);return show('unpaid',`<div class="big">Not paid</div><div class="nm">${esc(r.name)}</div><div class="meta">Payment for this ticket was not completed.</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
+  if(r.result==='used'){buzz(false);return show('used',`<div class="big">Already used</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · all ${r.total} admitted</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
+  buzz(true);
+  const left=r.left;
+  show('valid',`<div class="big">Valid ✓</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${left} of ${r.total} can enter</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>
+    <div class="acts"><button class="btn" onclick="admit('${esc(r.code)}',${left})">Admit ${left>1?'all '+left:'1'}</button>${left>1?`<button class="btn ghost" onclick="admit('${esc(r.code)}',1)">Admit 1 only</button>`:''}<button class="btn ghost" onclick="done()">Cancel</button></div>`);
+}
+window.admit=async(code,n)=>{
+  const r=await api({action:'checkin',pin:PIN,code,admit:n});
+  if(r.result==='admitted'){buzz(true);setCounts(Number($('inCount').textContent)+r.admitted);
+    show('admitted',`<div class="big">Admitted ${r.admitted}</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.used} of ${r.total} in</div>${dots(r.total,r.used)}<div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);
+    setTimeout(()=>{if(!$('res').classList.contains('hide')&&$('res').classList.contains('admitted'))done()},2500);return}
+  buzz(false);show(r.result==='used'?'used':'invalid',`<div class="big">${r.result==='used'?'Already used':'Not admitted'}</div><div class="meta">${esc(r.error||'')}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)};
+window.done=done;
+
+if(PIN)login(PIN);
+</script>
+</body>
+</html>
