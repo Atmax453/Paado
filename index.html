@@ -171,6 +171,13 @@ footer{background:var(--ink);padding:80px 0 110px}
   .tiers{grid-template-columns:1fr}
 }
 
+.nets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.nets label{margin:0;cursor:pointer;opacity:1;letter-spacing:0}
+.nets input{display:none}
+.nets div{border:2px solid rgba(0,0,0,.15);border-radius:12px;padding:10px 4px;text-align:center;background:#fff;font-weight:800;font-size:.9rem}
+.nets input:checked+div{border-color:var(--sun);background:#fff3e8}
+.alt{display:block;text-align:center;margin-top:12px;font-weight:700;font-size:.9rem;text-decoration:underline;cursor:pointer;background:none;border:0;width:100%;color:var(--ink);font-family:var(--body)}
+.spinner{width:46px;height:46px;border-radius:50%;border:5px solid rgba(0,0,0,.1);border-top-color:var(--sun);animation:spin 1s linear infinite;margin:18px auto}
 /* PAY MODAL */
 .modal{position:fixed;inset:0;z-index:90;display:none;align-items:flex-end;justify-content:center;background:rgba(3,15,14,.7);backdrop-filter:blur(6px)}
 .modal.open{display:flex}
@@ -221,7 +228,7 @@ footer{background:var(--ink);padding:80px 0 110px}
   <div class="wrap nav-in">
     <a href="#top" class="logo">PAADO ISLAND</a>
     <div class="links"><a href="#activities">Activities</a><a href="#tickets">Tickets</a><a href="#info">Info</a><a href="#contact">Contact</a></div>
-    <a href="tel:*713*33*347%23" class="btn btn-sun nav-cta dial">Buy Ticket</a>
+    <a href="#tickets" class="btn btn-sun nav-cta" data-pay>Purchase Ticket</a>
   </div>
 </nav>
 
@@ -251,7 +258,7 @@ footer{background:var(--ink);padding:80px 0 110px}
       <div>
         <div class="facts">SAT 28 NOV<i>·</i>12PM<i>·</i>WINNEBA</div>
         <div class="hero-cta">
-          <a href="tel:*713*33*347%23" class="btn btn-sun dial">Buy · Dial *713*33*347#</a>
+          <a href="#tickets" class="btn btn-sun" data-pay>Purchase Ticket</a>
           <a href="#activities" class="btn btn-ghost">Activities</a>
         </div>
       </div>
@@ -314,7 +321,7 @@ footer{background:var(--ink);padding:80px 0 110px}
         <div class="price"><small>₵</small><span data-price="single">100</span></div>
         <div class="for">For 1 person</div>
         <ul><li>Transportation</li><li>Canoe ride</li><li>Cup for drinks</li><li>All free games</li><li>Music performance</li><li>DJ sessions</li></ul>
-        <button class="btn btn-dark" type="button" data-pay="single">Buy Single</button>
+        <button class="btn btn-dark" type="button" data-pay="single">Purchase Single</button>
       </div>
       <div class="tier hot">
         <span class="ribbon">BEST VALUE</span>
@@ -322,7 +329,7 @@ footer{background:var(--ink);padding:80px 0 110px}
         <div class="price"><small>₵</small><span data-price="double">180</span></div>
         <div class="for">For 2 people · save ₵20</div>
         <ul><li>Transportation ×2</li><li>Canoe ride ×2</li><li>Cup for drinks ×2</li><li>All free games ×2</li><li>Music performance ×2</li><li>DJ sessions ×2</li></ul>
-        <button class="btn btn-dark" type="button" data-pay="double">Buy Double</button>
+        <button class="btn btn-dark" type="button" data-pay="double">Purchase Double</button>
       </div>
     </div>
     <div class="ussd-row reveal">
@@ -370,7 +377,7 @@ footer{background:var(--ink);padding:80px 0 110px}
 <div class="modal" id="modal" role="dialog" aria-modal="true">
   <div class="sheet" id="sheet"></div>
 </div>
-<div class="mbar"><span>28 Nov · from ₵100</span><a href="tel:*713*33*347%23" class="btn btn-sun dial">Buy ticket</a></div>
+<div class="mbar"><span>28 Nov · from ₵100</span><a href="#tickets" class="btn btn-sun" data-pay>Purchase Ticket</a></div>
 
 <script>
 /* ===== EDIT THESE ===== */
@@ -413,33 +420,79 @@ window.closeM=()=>modal.classList.remove('open');
 modal.addEventListener('click',e=>{if(e.target===modal)closeM()});
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+function guessNet(p){p=String(p).replace(/\D/g,'').replace(/^233/,'0');const k=p.slice(0,3);
+  if(['024','025','053','054','055','059'].includes(k))return 'mtn';
+  if(['020','050'].includes(k))return 'vod';
+  if(['026','027','056','057'].includes(k))return 'atl';return ''}
 function payForm(t){
   qty=1; tier=(t==='double')?'double':'single';
-  openM(`<h3>Get your ticket</h3><p class="sub">Paado Island Experience · Sat 28 Nov · 12PM · Winneba</p>
+  openM(`<h3>Purchase ticket</h3><p class="sub">Paado Island Experience · Sat 28 Nov · 12PM · Winneba</p>
   <form id="payF">
     <div class="tierpick">
       <label><input type="radio" name="tier" value="single" ${tier==='single'?'checked':''}><div>Single<small>1 person · ₵${PRICES.single}</small></div></label>
       <label><input type="radio" name="tier" value="double" ${tier==='double'?'checked':''}><div>Double<small>2 people · ₵${PRICES.double}</small></div></label>
     </div>
     <label>FULL NAME</label><input name="name" required autocomplete="name" placeholder="e.g. Ama Mensah">
-    <label>PHONE NUMBER</label><input name="phone" required inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX">
-    <label>EMAIL (OPTIONAL, FOR RECEIPT)</label><input name="email" type="email" autocomplete="email" placeholder="you@email.com">
+    <label>MOMO NUMBER</label><input name="phone" id="pPhone" required inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX">
+    <label>NETWORK</label>
+    <div class="nets">
+      <label><input type="radio" name="net" value="mtn"><div>MTN</div></label>
+      <label><input type="radio" name="net" value="vod"><div>Telecel</div></label>
+      <label><input type="radio" name="net" value="atl"><div>AirtelTigo</div></label>
+    </div>
     <div class="qty"><span style="font-weight:800">How many</span><div class="ctl"><button type="button" id="qm">−</button><b id="qn">1</b><button type="button" id="qp">+</button></div></div>
     <div class="total"><span>Total</span><b id="qt"></b></div>
-    <button class="btn btn-sun" id="payGo" type="submit">Pay with MoMo / Card →</button>
+    <button class="btn btn-sun" id="payGo" type="submit">Pay with MoMo →</button>
     <div class="err" id="perr"></div>
-    <p class="fine">Secure payment by Paystack. Your ticket code appears right after you pay. Free transport from Sir Charles Beach.</p>
+    <button type="button" class="alt" id="payCard">Pay with card instead</button>
+    <p class="fine">A payment prompt goes straight to your phone. Approve it with your MoMo PIN. Secured by Paystack.</p>
   </form>`);
-  const upd=()=>{$('qn').textContent=qty;$('qt').textContent='₵'+(PRICES[tier]*qty)};upd();
+  const upd=()=>{$('qn').textContent=qty;$('qt').textContent='₵'+(PRICES[tier]*qty);$('payGo').textContent='Pay ₵'+(PRICES[tier]*qty)+' with MoMo →'};upd();
   document.querySelectorAll('#payF input[name=tier]').forEach(r=>r.onchange=()=>{tier=r.value;upd()});
   $('qm').onclick=()=>{if(qty>1){qty--;upd()}};$('qp').onclick=()=>{if(qty<10){qty++;upd()}};
+  $('pPhone').addEventListener('input',e=>{const n=guessNet(e.target.value);if(n){const r=document.querySelector('#payF input[name=net][value='+n+']');if(r)r.checked=true}});
+  $('payCard').onclick=async()=>{
+    const f=new FormData($('payF'));$('perr').textContent='';
+    if(!f.get('name')||!f.get('phone')){$('perr').textContent='Enter your name and phone number first.';return}
+    $('payCard').textContent='Opening card payment…';
+    const r=await api({action:'init',tier,name:f.get('name'),phone:f.get('phone'),qty,return_url:location.href.split(/[?#]/)[0]});
+    if(r.ok&&r.url){location.href=r.url;return}
+    $('perr').textContent=r.error||'Could not start payment.';$('payCard').textContent='Pay with card instead';
+  };
   $('payF').onsubmit=async e=>{
     e.preventDefault();const f=new FormData(e.target),b=$('payGo');
-    b.disabled=true;b.textContent='Opening payment…';$('perr').textContent='';
-    const r=await api({action:'init',tier,name:f.get('name'),phone:f.get('phone'),email:f.get('email'),qty,return_url:location.href.split(/[?#]/)[0]});
-    if(r.ok&&r.url){location.href=r.url;return}
-    $('perr').textContent=r.error||'Could not start payment.';b.disabled=false;b.textContent='Pay with MoMo / Card →';
+    if(!f.get('net')){$('perr').textContent='Pick your network.';return}
+    b.disabled=true;b.textContent='Sending prompt to your phone…';$('perr').textContent='';
+    const r=await api({action:'momo',tier,name:f.get('name'),phone:f.get('phone'),provider:f.get('net'),qty});
+    if(r.ok&&r.status==='success'&&r.ticket){showTicket(r.ticket);return}
+    if(r.ok&&r.reference){momoWait(r.reference,r.status,r.display_text,f.get('phone'));return}
+    if(r.fallback){$('perr').textContent='MoMo prompt unavailable right now. Opening Paystack instead…';
+      const c=await api({action:'init',tier,name:f.get('name'),phone:f.get('phone'),qty,return_url:location.href.split(/[?#]/)[0]});
+      if(c.ok&&c.url){location.href=c.url;return}}
+    $('perr').textContent=r.error||'Could not start payment.';upd();b.disabled=false;
   };
+}
+let pollT=null;
+function momoWait(ref,status,text,phone){
+  clearTimeout(pollT);
+  const otpBox=status==='send_otp'?`<form id="otpF" style="margin-top:6px"><label>CODE SENT TO YOUR PHONE</label><input name="otp" inputmode="numeric" autocomplete="one-time-code" required placeholder="Enter code"><button class="btn btn-sun" style="margin-top:12px" id="otpGo">Confirm code</button></form>`:'';
+  openM(`<h3>Check your phone 📲</h3><p class="sub">${esc(text||'Approve the MoMo prompt on '+phone+' with your PIN.')}</p>
+  ${otpBox}<div class="spinner"></div><p class="fine" id="wmsg">Waiting for your approval… this can take up to a minute. Keep this page open.</p><div class="err" id="werr"></div>`);
+  if($('otpF'))$('otpF').onsubmit=async e=>{e.preventDefault();const b=$('otpGo');b.disabled=true;b.textContent='Checking…';
+    const r=await api({action:'otp',reference:ref,otp:new FormData(e.target).get('otp')});
+    if(r.ok&&r.status==='success'&&r.ticket){showTicket(r.ticket);return}
+    if(r.ok){momoWait(ref,r.status,r.display_text,phone);return}
+    $('werr').textContent=r.error||'That code didn\'t work.';b.disabled=false;b.textContent='Confirm code'};
+  const start=Date.now();
+  const poll=async()=>{
+    if(!modal.classList.contains('open'))return;
+    const r=await api({action:'verify',reference:ref});
+    if(r.ok&&r.ticket){showTicket(r.ticket);return}
+    if(r.ticket&&r.ticket.status==='failed'){openM(`<h3>Payment not completed</h3><p class="sub">${esc(r.gateway||'The prompt was declined or timed out. You were not charged.')}</p><button class="btn btn-sun" onclick="payForm('${tier}')">Try again</button>`);return}
+    if(Date.now()-start>200000){openM(`<h3>Still waiting</h3><p class="sub">If you approved the payment, your ticket will show under "Find my ticket" in a minute.</p><p class="fine">Reference: ${esc(ref)}</p><button class="btn btn-dark" onclick="findForm()">Find my ticket</button><button class="alt" onclick="payForm('${tier}')">Try again</button>`);return}
+    pollT=setTimeout(poll,4000);
+  };
+  pollT=setTimeout(poll,5000);
 }
 function showTicket(t){
   openM(`<h3>You're in! 🌴</h3><p class="sub">Show this code at the gate. Take a screenshot.</p>
@@ -480,7 +533,6 @@ async function checkReturn(){
 document.querySelectorAll('[data-pay]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();payForm(b.dataset.pay)}));
 document.querySelectorAll('[data-find]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();findForm()}));
 // Buy buttons: Android dials the shortcode; iPhone & computers open online payment
-document.querySelectorAll('.dial').forEach(a=>a.addEventListener('click',e=>{if(!isAndroid){e.preventDefault();payForm()}}));
 if(!isAndroid)document.querySelectorAll('.android-only').forEach(x=>x.style.display='none');
 api({action:'info'}).then(r=>{if(r&&r.tiers){PRICES=r.tiers;document.querySelectorAll('[data-price]').forEach(x=>x.textContent=PRICES[x.dataset.price])}});
 checkReturn();
