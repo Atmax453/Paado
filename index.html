@@ -76,7 +76,7 @@ nav.solid{background:rgba(3,33,31,.85);backdrop-filter:blur(12px)}
 .marquee span{font-family:var(--display);font-size:1.5rem;padding:10px 22px;white-space:nowrap;text-transform:uppercase}
 .marquee span::after{content:"✺";margin-left:44px;color:var(--sun)}
 
-section{padding:100px 0}
+section{padding:100px 0;scroll-margin-top:64px}
 .kicker{font-weight:800;letter-spacing:.28em;font-size:.74rem;color:var(--sun-2);margin-bottom:12px;display:block}
 h2{font-family:var(--display);font-size:clamp(2.4rem,6vw,4.4rem);line-height:.92;text-transform:uppercase}
 h2 .o{color:transparent;-webkit-text-stroke:2px var(--cream)}
@@ -85,7 +85,7 @@ h2 .o{color:transparent;-webkit-text-stroke:2px var(--cream)}
 .acts-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:56px;align-items:start}
 .intro p{margin-top:16px;opacity:.75;max-width:360px}
 .pframe{position:relative;margin-top:28px;border-radius:22px;overflow:hidden;aspect-ratio:4/5;background:var(--lagoon)}
-.pframe img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.06);transition:opacity .6s ease,transform 1.2s ease}
+.pframe img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 40%;opacity:0;transform:scale(1.06);transition:opacity .6s ease,transform 1.2s ease}
 .pframe img.on{opacity:1;transform:scale(1)}
 .pframe .cap{position:absolute;left:14px;bottom:14px;background:rgba(3,33,31,.75);backdrop-filter:blur(6px);padding:6px 12px;border-radius:999px;font-weight:800;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
 .list{border-top:1px solid var(--line)}
@@ -203,6 +203,51 @@ footer{background:var(--ink);padding:80px 0 110px}
   .count div{min-width:62px;padding:8px}.count b{font-size:1.8rem}
   .eyebrow{font-size:.62rem;letter-spacing:.16em}
 }
+
+/* facts bar */
+.facts-bar{background:var(--sun-2);color:var(--ink);position:relative;z-index:5}
+.fb-in{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.fb{display:flex;align-items:center;gap:12px;padding:16px 18px;border-left:1px solid rgba(0,0,0,.12)}
+.fb:first-child{border-left:0;padding-left:0}
+.fi{font-size:1.5rem;line-height:1}
+.fb small{display:block;font-size:.66rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.65}
+.fb b{font-family:var(--display);font-weight:400;font-size:1.25rem;letter-spacing:.02em;text-transform:uppercase;line-height:1.1;display:block}
+.hint-price{margin-top:12px;font-weight:700;font-size:.92rem;opacity:.85}
+.tix-extra{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;align-items:center;margin-top:18px}
+.tix-extra .ussd-row{margin-top:0}
+.tix-extra .transport{margin-top:0;background:rgba(3,33,31,.6);border:1px solid var(--line);border-radius:18px;padding:18px 20px;height:100%;display:block}
+.vibe{padding:100px 0}
+.mbar{transform:translateY(140%);transition:transform .35s ease}
+.mbar.show{transform:none}
+@media (min-width:1300px){.wrap{width:min(1200px,90vw)}}
+@media (min-width:861px){.pframe{aspect-ratio:5/5}}
+@media (max-width:860px){
+  .fb-in{grid-template-columns:1fr 1fr;width:100%}
+  .fb{padding:12px 16px;border-left:0;border-top:1px solid rgba(0,0,0,.1)}
+  .fb:first-child{padding-left:16px}
+  .fb:nth-child(-n+2){border-top:0}
+  .fb:nth-child(even){border-left:1px solid rgba(0,0,0,.1)}
+  .fb b{font-size:1.02rem}
+  .fi{font-size:1.25rem}
+  .tix-extra{grid-template-columns:1fr}
+  .vibe{padding:70px 0}
+  section{padding:64px 0}
+  .count{display:grid;grid-template-columns:repeat(4,1fr);width:100%}
+  .count div{min-width:0}
+  .hero-row{gap:20px}
+  .hero-in{padding:100px 0 40px}
+  .tier ul{grid-template-columns:1fr 1fr;gap:6px 10px;font-size:.88rem}
+  .tier{padding:22px}
+  .tier .price{font-size:3rem}
+  .acts-grid{gap:24px}
+  .intro p{max-width:none}
+  .row .n{font-size:1.7rem}
+  .f-grid{gap:28px}
+  .phones a{font-size:1.6rem}
+  footer{padding:60px 0 120px}
+}
+@media (max-width:380px){.fb b{font-size:.92rem}.hero h1{font-size:3.1rem}}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
 </style>
 </head>
@@ -245,6 +290,7 @@ footer{background:var(--ink);padding:80px 0 110px}
           <a href="#tickets" class="btn btn-sun" data-pay>Purchase Ticket</a>
           <a href="#activities" class="btn btn-ghost">Activities</a>
         </div>
+        <p class="hint-price" id="heroHint">From ₵100 · Free transport included</p>
       </div>
       <div class="count" id="count">
         <div><b id="d">00</b><small>DAYS</small></div>
@@ -256,7 +302,7 @@ footer{background:var(--ink);padding:80px 0 110px}
   </div>
 </header>
 
-<div class="marquee" aria-hidden="true"><div class="track" id="track"></div></div>
+<div class="facts-bar"><div class="wrap fb-in" id="factsBar"></div></div>
 
 <!-- ACTIVITIES -->
 <section id="activities">
@@ -282,23 +328,25 @@ footer{background:var(--ink);padding:80px 0 110px}
   </div>
 </section>
 
-<!-- FILMSTRIP -->
-<section style="padding:0 0 100px">
-  <div class="wrap reveal" style="margin-bottom:28px"><span class="kicker">THE VIBE</span><h2>See you on <span class="o">the island.</span></h2></div>
-  <div class="strip reveal"><div class="track" id="strip"></div></div>
-</section>
-
 <!-- TICKETS -->
 <section class="tix" id="tickets">
   <div class="wrap">
     <div class="reveal" style="margin-bottom:36px"><span class="kicker">TICKETS</span><h2>Pick your <span class="o">pass.</span></h2></div>
     <div class="tiers reveal" id="tiers"></div>
+    <div class="tix-extra">
     <div class="ussd-row reveal">
       <div><b id="sUssd">*713*33*347#</b><br><span>Prefer USSD? Dial on any network. <a href="#" data-find style="text-decoration:underline">Find my ticket</a></span></div>
       <a class="btn btn-sun android-only" id="dialBtn" href="tel:*713*33*347%23">Dial now</a>
     </div>
     <p class="transport reveal" id="sTransport">🚌 <b>Free transport</b> to the island leaves from <b>Sir Charles Beach</b>, included with every ticket.</p>
+    </div>
   </div>
+</section>
+
+<!-- FILMSTRIP -->
+<section class="vibe">
+  <div class="wrap reveal" style="margin-bottom:28px"><span class="kicker">THE VIBE</span><h2>See you on <span class="o">the island.</span></h2></div>
+  <div class="strip reveal"><div class="track" id="strip"></div></div>
 </section>
 
 <!-- INFO -->
@@ -365,8 +413,10 @@ function render(){
   $('sFacts').innerHTML=`${esc(S.date_label)}<i>·</i>${esc(S.time_label)}<i>·</i>${esc(city)}`;
   $('sIntro').textContent=`${S.tagline} is back for its ${S.edition.toLowerCase()}: water, sand, games and music from ${S.time_label}.`;
   const acts=S.activities||[];
-  $('track').innerHTML=(acts.map(a=>`<span>${esc(a.n)}</span>`).join('')).repeat(4);
   $('actList').innerHTML=acts.map((a,i)=>`<div class="row" data-i="${i}"><span class="n">${esc(a.n)}</span><span class="m">${esc(a.m)}</span></div>`).join('');
+  const pick=(S.transport.match(/from ([^,.]+)/i)||[])[1];
+  $('factsBar').innerHTML=[['📅','Date',S.date_label],['⏰','Starts',S.time_label],['📍','Venue',S.venue],['🚌','Free transport',pick?'From '+pick:'Included']]
+    .map(([i,l,v])=>`<div class="fb"><span class="fi">${i}</span><div><small>${esc(l)}</small><b>${esc(v)}</b></div></div>`).join('');
   $('sChill').innerHTML=`<b>Chill zone:</b> ${esc(S.chill)}`;
   $('sUssd').textContent=S.ussd;$('dialBtn').href='tel:'+S.ussd.replace(/#/g,'%23');
   $('sTransport').innerHTML='🚌 '+esc(S.transport).replace(/(Free transport)/i,'<b>$1</b>').replace(/(Sir Charles Beach)/i,'<b>$1</b>');
@@ -383,7 +433,7 @@ function render(){
       <div class="for">For ${t.people} ${t.people>1?'people':'person'}</div>
       <ul>${(t.includes||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
       <button class="btn btn-dark" type="button" data-pay="${esc(t.slug)}">Purchase ${esc(t.name)}</button></div>`).join('');
-  const minP=Math.min(...vis.map(t=>t.price));$('mbarTx').textContent=`${S.date_label.replace(/^\w+\s/,'')} · from ₵${isFinite(minP)?minP:''}`;
+  const minP=Math.min(...vis.map(t=>t.price));$('heroHint').textContent=`From ₵${isFinite(minP)?minP:''} · Free transport included`;$('mbarTx').textContent=`${S.date_label.replace(/^\w+\s/,'')} · from ₵${isFinite(minP)?minP:''}`;
   // faq
   const faq=[
     ['When and where?',`${S.date_label}, from ${S.time_label}, at ${S.venue}. ${S.transport}`],
@@ -423,7 +473,11 @@ function tick(){const t=new Date(S.event_date)-new Date();
   const p=n=>String(n).padStart(2,'0');
   $('d').textContent=p(Math.floor(t/864e5));$('h').textContent=p(Math.floor(t/36e5)%24);$('m').textContent=p(Math.floor(t/6e4)%60);$('s').textContent=p(Math.floor(t/1e3)%60);}
 setInterval(tick,1000);tick();
-addEventListener('scroll',()=>$('nav').classList.toggle('solid',scrollY>40),{passive:true});
+const navSolid=()=>$('nav').classList.toggle('solid',scrollY>40);addEventListener('scroll',navSolid,{passive:true});navSolid();
+// mobile purchase bar: only after the hero, hidden while the ticket section is on screen
+(function(){let pastHero=false,onTix=false;const upd=()=>document.querySelector('.mbar').classList.toggle('show',pastHero&&!onTix);
+  new IntersectionObserver(([e])=>{pastHero=!e.isIntersecting;upd()},{threshold:0}).observe(document.querySelector('.hero-cta'));
+  new IntersectionObserver(([e])=>{onTix=e.isIntersecting;upd()},{threshold:.15}).observe($('tickets'))})();
 
 /* ---------- modal ---------- */
 const modal=$('modal'),sheet=$('sheet');
