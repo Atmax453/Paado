@@ -2,75 +2,137 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#03211f">
-<title>Paado Gate · Staff</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Paado Gate">
+<link rel="manifest" href="staff.webmanifest">
+<link rel="apple-touch-icon" href="assets/gate-192.png">
+<title>Paado Gate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
-:root{--deep:#03211f;--lagoon:#063a3f;--sun:#ff6a1a;--sun-2:#ffb21f;--cream:#fff8ea;--ink:#0b0b0b;--ok:#18a058;--bad:#d32f2f;--warn:#f59e0b;
-  --display:'Anton',Impact,sans-serif;--body:'Bricolage Grotesque',system-ui,sans-serif}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{font-family:var(--body);background:var(--deep);color:var(--cream);overflow:hidden}
+:root{--deep:#03211f;--lagoon:#063a3f;--sun:#ff6a1a;--sun-2:#ffb21f;--cream:#fff8ea;--ink:#0b0b0b;--ok:#15924d;--bad:#d32f2f;--warn:#f59e0b;
+  --display:'Anton',Impact,sans-serif;--body:'Bricolage Grotesque',system-ui,sans-serif;
+  --st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:var(--body);background:var(--deep);color:var(--cream);overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+input{user-select:text;-webkit-user-select:text}
 .screen{position:fixed;inset:0;display:flex;flex-direction:column}
 .hide{display:none!important}
-/* login */
-.login{align-items:center;justify-content:center;padding:24px;text-align:center}
-.login h1{font-family:var(--display);font-size:2.6rem;line-height:1;text-transform:uppercase}
+button{font-family:var(--body);cursor:pointer}
+
+/* ---------- LOGIN ---------- */
+.login{align-items:center;justify-content:center;padding:calc(var(--st) + 20px) 22px calc(var(--sb) + 20px);text-align:center}
+.login h1{font-family:var(--display);font-size:2.8rem;line-height:1;text-transform:uppercase}
 .login h1 span{color:var(--sun-2)}
-.login p{opacity:.7;font-weight:600;margin:8px 0 22px}
-.dots{display:flex;gap:12px;justify-content:center;margin-bottom:22px}
-.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--cream);opacity:.6}
-.dots i.f{background:var(--sun-2);border-color:var(--sun-2);opacity:1}
-.pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;justify-content:center}
-.pad button{height:76px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--cream);font:400 1.9rem var(--display);cursor:pointer}
+.login p{opacity:.75;font-weight:600;margin:8px 0 22px;font-size:1.05rem}
+.estep{width:min(360px,100%)}
+.field{width:100%;padding:18px;border-radius:16px;border:0;font:700 17px var(--body);text-align:center;background:#fff;color:var(--ink)}
+.bigbtn{width:100%;margin-top:12px;padding:18px;border:0;border-radius:16px;background:var(--sun-2);color:var(--ink);font:800 1.1rem var(--body)}
+.bigbtn:active{transform:scale(.98)}
+.dots{display:flex;gap:14px;justify-content:center;margin-bottom:26px}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--cream);opacity:.6;transition:.15s}
+.dots i.f{background:var(--sun-2);border-color:var(--sun-2);opacity:1;transform:scale(1.1)}
+.dots.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+.pad{display:grid;grid-template-columns:repeat(3,min(24vw,88px));gap:min(4vw,16px);justify-content:center}
+.pad button{aspect-ratio:1;border-radius:50%;border:0;background:rgba(255,255,255,.09);color:var(--cream);font:400 2rem var(--display)}
 .pad button:active{background:var(--sun-2);color:var(--ink)}
+.pad .blank{visibility:hidden}
+.linkb{background:none;border:0;color:var(--cream);opacity:.7;text-decoration:underline;font:700 .95rem var(--body);margin-top:22px;padding:8px}
 .err{color:#ff8a80;font-weight:800;min-height:1.4em;margin-top:16px;max-width:320px}
-.estep{width:min(340px,100%)}
-.estep input{width:100%;padding:16px;border-radius:14px;border:0;font:700 1.05rem var(--body);text-align:center}
-.linkb{background:none;border:0;color:var(--cream);opacity:.7;text-decoration:underline;font:700 .9rem var(--body);margin-top:18px;cursor:pointer}
-/* scanner */
-.top{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:rgba(3,33,31,.9);z-index:3}
-.top b{font-family:var(--display);font-size:1.1rem;letter-spacing:.02em}
-.top small{display:block;font-weight:700;opacity:.7;font-size:.75rem}
-.count{font-family:var(--display);font-size:1.5rem;text-align:right;line-height:1}
-.count small{font-family:var(--body)}
-.cam{position:relative;flex:1;background:#000;overflow:hidden}
+
+/* ---------- SCANNER ---------- */
+.top{position:absolute;top:0;left:0;right:0;z-index:4;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:calc(var(--st) + 10px) 14px 10px;background:linear-gradient(180deg,rgba(3,33,31,.95),rgba(3,33,31,.0))}
+.who b{font-family:var(--display);font-size:1.15rem;letter-spacing:.02em;display:block;line-height:1.1}
+.who small{font-weight:700;opacity:.8;font-size:.78rem}
+.ctr{text-align:right;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);padding:8px 12px;border-radius:14px}
+.ctr b{font-family:var(--display);font-size:1.6rem;line-height:1}
+.ctr small{display:block;font-size:.7rem;font-weight:800;letter-spacing:.08em;opacity:.8}
+.offline{position:absolute;top:calc(var(--st) + 66px);left:14px;right:14px;z-index:5;background:var(--bad);color:#fff;text-align:center;font-weight:800;padding:10px;border-radius:12px}
+.cam{position:absolute;inset:0;background:#000}
 video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.frame{position:absolute;left:50%;top:46%;width:min(68vw,320px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:24px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
-.frame::before,.frame::after{content:"";position:absolute;inset:-3px;border-radius:24px;border:4px solid var(--sun-2);clip-path:polygon(0 0,30% 0,30% 4px,4px 4px,4px 30%,0 30%,0 70%,4px 70%,4px calc(100% - 4px),30% calc(100% - 4px),30% 100%,70% 100%,70% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 70%,100% 70%,100% 30%,calc(100% - 4px) 30%,calc(100% - 4px) 4px,70% 4px,70% 0,100% 0,100% 100%,0 100%)}
-.frame::after{display:none}
-.hint{position:absolute;left:0;right:0;bottom:22%;text-align:center;font-weight:800;text-shadow:0 2px 8px #000}
-.camerr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;font-weight:700}
-.bottom{padding:12px 16px calc(env(safe-area-inset-bottom) + 14px);background:var(--deep);display:flex;gap:10px}
-.bottom input{flex:1;padding:14px 16px;border-radius:14px;border:0;font:800 1.05rem var(--body);text-transform:uppercase}
-.btn{border:0;border-radius:14px;padding:14px 18px;font:800 1rem var(--body);cursor:pointer;background:var(--sun-2);color:var(--ink)}
-.btn.dark{background:rgba(255,255,255,.1);color:var(--cream)}
-/* result */
-.result{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;gap:6px}
-.result.valid{background:var(--ok)}.result.admitted{background:var(--ok)}.result.used,.result.redeemed{background:var(--bad)}.result.invalid{background:var(--bad)}.result.unpaid{background:var(--warn);color:var(--ink)}
-.result .big{font-family:var(--display);font-size:clamp(3rem,16vw,5.5rem);line-height:.95;text-transform:uppercase}
-.result .nm{font-size:1.5rem;font-weight:800;margin-top:10px}
-.result .meta{font-weight:700;opacity:.9;font-size:1.05rem}
-.result .code{font-family:ui-monospace,Menlo,monospace;font-weight:800;opacity:.85;margin-top:4px}
-.result .acts{display:flex;flex-direction:column;gap:10px;width:min(360px,100%);margin-top:26px}
-.result .acts .btn{padding:18px;font-size:1.15rem;background:#fff;color:var(--ink)}
-.result .acts .btn.ghost{background:rgba(0,0,0,.18);color:inherit}
-.ppl{display:flex;gap:8px;justify-content:center;margin-top:12px}
-.ppl i{width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.35)}.ppl i.u{background:#fff}
+.frame{position:absolute;left:50%;top:44%;width:min(72vw,340px);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:26px;box-shadow:0 0 0 200vmax rgba(0,0,0,.5)}
+.frame i{position:absolute;width:40px;height:40px;border:5px solid var(--sun-2)}
+.frame i:nth-child(1){top:-3px;left:-3px;border-right:0;border-bottom:0;border-radius:26px 0 0 0}
+.frame i:nth-child(2){top:-3px;right:-3px;border-left:0;border-bottom:0;border-radius:0 26px 0 0}
+.frame i:nth-child(3){bottom:-3px;left:-3px;border-right:0;border-top:0;border-radius:0 0 0 26px}
+.frame i:nth-child(4){bottom:-3px;right:-3px;border-left:0;border-top:0;border-radius:0 0 26px 0}
+.frame .laser{position:absolute;left:8%;right:8%;height:3px;background:var(--sun-2);box-shadow:0 0 12px var(--sun-2);border-radius:3px;animation:laser 2.2s ease-in-out infinite}
+@keyframes laser{0%,100%{top:12%}50%{top:86%}}
+.hint{position:absolute;left:0;right:0;top:calc(44% + min(36vw,170px) + 18px);text-align:center;font-weight:800;font-size:1.05rem;text-shadow:0 2px 8px #000;z-index:2}
+.camerr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;gap:14px;font-weight:700;z-index:3;background:var(--deep)}
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:4;padding:14px 14px calc(var(--sb) + 14px);background:linear-gradient(0deg,rgba(3,33,31,.98) 60%,rgba(3,33,31,0));display:grid;grid-template-columns:1fr 1fr 64px;gap:10px}
+.dock button{height:64px;border:0;border-radius:18px;font:800 1rem var(--body);background:rgba(255,255,255,.12);color:var(--cream);display:flex;align-items:center;justify-content:center;gap:8px}
+.dock button:active{transform:scale(.97)}
+.dock .pri{background:var(--sun-2);color:var(--ink)}
+.dock .ico.on{background:var(--cream);color:var(--ink)}
+.dock:has(.ico.hide){grid-template-columns:1fr 1fr}
+.dock svg{width:24px;height:24px}
+.recent{position:absolute;left:14px;right:14px;bottom:calc(var(--sb) + 96px);z-index:4;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.recent::-webkit-scrollbar{display:none}
+.recent span{flex:none;padding:6px 10px;border-radius:999px;font-size:.78rem;font-weight:800;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);white-space:nowrap}
+.recent span.a{border:1.5px solid #4ade80}.recent span.r{border:1.5px solid #f87171}
+.menu{background:none;border:0;color:var(--cream);font-size:1.6rem;padding:4px 8px;line-height:1}
+
+/* ---------- SHEETS ---------- */
+.sheetbg{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.6);display:flex;align-items:flex-end}
+.sheet{width:100%;background:var(--cream);color:var(--ink);border-radius:26px 26px 0 0;padding:22px 18px calc(var(--sb) + 18px);max-height:88vh;overflow:auto;animation:up .25s ease}
+@keyframes up{from{transform:translateY(60px);opacity:0}}
+.sheet h3{font-family:var(--display);font-size:1.7rem;text-transform:uppercase;line-height:1;margin-bottom:4px}
+.sheet .sub{opacity:.65;font-weight:600;margin-bottom:14px;font-size:.95rem}
+.sheet .field{background:#fff;border:2px solid rgba(0,0,0,.12);text-align:left;text-transform:none}
+.sheet .field.code{text-transform:uppercase;letter-spacing:.06em;text-align:center;font-size:1.4rem}
+.grab{width:44px;height:5px;border-radius:9px;background:rgba(0,0,0,.2);margin:-8px auto 14px}
+.sheet .bigbtn{background:var(--ink);color:var(--cream)}
+.sheet .bigbtn.alt{background:none;color:var(--ink);border:2px solid rgba(0,0,0,.15)}
+.res{display:grid;gap:10px;margin-top:14px}
+.res button{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;width:100%;padding:16px;border-radius:16px;border:2px solid rgba(0,0,0,.1);background:#fff;color:var(--ink)}
+.res b{font-size:1.05rem;display:block}
+.res small{opacity:.65;font-weight:700}
+.res .tg{flex:none;font-weight:800;font-size:.75rem;padding:5px 10px;border-radius:99px;background:#e3f5ea;color:var(--ok)}
+.res .tg.u{background:#fde4e4;color:var(--bad)}
+.serr{color:var(--bad);font-weight:800;min-height:1.2em;margin-top:10px}
+.mi{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;border-bottom:1px solid rgba(0,0,0,.08);font-weight:700}
+.mi button{border:0;background:none;font:800 1rem var(--body);color:var(--ink);padding:6px 0}
+
+/* ---------- RESULT ---------- */
+.result{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;text-align:center;padding:calc(var(--st) + 24px) 22px calc(var(--sb) + 18px)}
+.result .body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px}
+.result.valid,.result.admitted{background:var(--ok)}.result.redeemed,.result.invalid{background:var(--bad)}.result.unpaid{background:var(--warn);color:var(--ink)}.result.loading{background:var(--lagoon)}
+.result .ico{width:84px;height:84px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-size:2.6rem;margin-bottom:8px}
+.result .big{font-family:var(--display);font-size:clamp(2.8rem,15vw,5rem);line-height:.95;text-transform:uppercase}
+.result .nm{font-size:1.6rem;font-weight:800;margin-top:10px;line-height:1.15}
+.result .meta{font-weight:700;opacity:.92;font-size:1.05rem}
+.result .code{font-family:ui-monospace,Menlo,monospace;font-weight:800;opacity:.8;margin-top:6px}
+.result .acts{display:grid;gap:10px;width:100%}
+.result .acts button{padding:20px;border:0;border-radius:18px;font:800 1.2rem var(--body);background:#fff;color:var(--ink)}
+.result .acts button.ghost{background:rgba(0,0,0,.2);color:inherit;padding:16px;font-size:1.05rem}
+.result .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ppl{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px;max-width:300px}
+.ppl i{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.3)}.ppl i.u{background:#fff}
+.auto{height:4px;background:rgba(255,255,255,.3);border-radius:4px;overflow:hidden;margin-bottom:12px}
+.auto i{display:block;height:100%;background:#fff;animation:shrink 2.5s linear forwards}
+@keyframes shrink{from{width:100%}to{width:0}}
+.spin{width:54px;height:54px;border-radius:50%;border:5px solid rgba(255,255,255,.25);border-top-color:#fff;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div class="screen login" id="loginS">
   <h1>Paado <span>Gate</span></h1>
   <form id="emailF" class="estep">
     <p>Sign in with your staff email</p>
-    <input id="email" type="email" required autocomplete="email" placeholder="you@email.com">
-    <button class="btn" style="width:100%;margin-top:12px">Continue</button>
+    <input id="email" class="field" type="email" inputmode="email" required autocomplete="email" autocapitalize="off" placeholder="you@email.com">
+    <button class="bigbtn">Continue</button>
   </form>
   <div id="pinStep" class="hide">
     <p id="pinMsg">Enter your 6-digit PIN</p>
@@ -81,17 +143,28 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   <div class="err" id="perr"></div>
 </div>
 
+<!-- SCANNER -->
 <div class="screen hide" id="scanS">
-  <div class="top"><div><b>PAADO GATE</b><small id="staffName"></small></div><div class="count"><span id="inCount">0</span><small> / <span id="soldCount">0</span> in</small></div></div>
   <div class="cam" id="cam">
-    <video id="vid" playsinline muted></video>
-    <div class="frame"></div>
+    <video id="vid" playsinline muted autoplay></video>
+    <div class="frame"><i></i><i></i><i></i><i></i><div class="laser"></div></div>
     <div class="hint" id="hint">Point at the ticket QR code</div>
-    <div class="camerr hide" id="camErr"></div>
+    <div class="camerr hide" id="camErr"><div id="camErrTx"></div><button class="bigbtn" style="max-width:300px" onclick="startCam()">Turn on camera</button></div>
   </div>
-  <form class="bottom" id="manF"><input id="manCode" placeholder="Or type code: PIE-XXXXXX" autocomplete="off"><button class="btn">Check</button><button type="button" class="btn dark" id="out">Exit</button></form>
+  <div class="top">
+    <div class="who"><b>PAADO GATE</b><small id="staffName"></small></div>
+    <div style="display:flex;align-items:center;gap:6px"><div class="ctr"><b id="inCount">0</b><small>OF <span id="soldCount">0</span> IN</small></div><button class="menu" id="menuBtn" aria-label="Menu">⋮</button></div>
+  </div>
+  <div class="offline hide" id="offline">No internet. Scans won't work until you're back online.</div>
+  <div class="recent" id="recent"></div>
+  <div class="dock">
+    <button id="typeBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>Type code</button>
+    <button id="findBtn" class="pri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Find guest</button>
+    <button id="torchBtn" class="ico" aria-label="Torch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8l-1 6H9z"/><path d="M9 8v3l-1 2v9h8v-9l-1-2V8"/><path d="M12 14v3"/></svg></button>
+  </div>
 </div>
 
+<div id="sheetHost"></div>
 <div class="result hide" id="res"></div>
 <canvas id="cv" class="hide"></canvas>
 
@@ -100,13 +173,14 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 const API="https://xzeahvkmvrdpxcfsgwqh.supabase.co/functions/v1/paado-tickets",ANON="sb_publishable_LCRngOPZzgc6E-QwT6jjZQ_hb0qqLjY";
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=b=>fetch(API,{method:'POST',headers:{'content-type':'application/json',apikey:ANON},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({error:'No connection. Check your internet.'}));
-let EMAIL=sessionStorage.getItem('paado_email')||'',PIN=sessionStorage.getItem('paado_pin')||'',entry='',first='',mode='enter',busy=false,stream=null,lastCode='',lastAt=0;
+const api=b=>{if(!navigator.onLine)return Promise.resolve({error:'No internet connection.'});
+  return fetch(API,{method:'POST',headers:{'content-type':'application/json',apikey:ANON},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({error:'No connection. Check your internet.'}))};
+let EMAIL=sessionStorage.getItem('paado_email')||'',PIN=sessionStorage.getItem('paado_pin')||'',entry='',first='',mode='enter',busy=false,stream=null,track=null,lastCode='',lastAt=0,torch=false,wake=null,SOUND=localStorage.getItem('paado_sound')!=='off',RECENT=[];
 const auth=()=>({email:EMAIL,pin:PIN});
 
-/* ---------- email -> PIN ---------- */
+/* ========== LOGIN ========== */
 $('email').value=localStorage.getItem('paado_last_email')||'';
-$('emailF').onsubmit=async e=>{e.preventDefault();const em=$('email').value.trim().toLowerCase();$('perr').textContent='Checking…';
+$('emailF').onsubmit=async e=>{e.preventDefault();const em=$('email').value.trim().toLowerCase();$('perr').textContent='Checking…';$('email').blur();
   const r=await api({action:'staff_check',email:em});
   if(!r.ok){$('perr').textContent=r.error;return}
   EMAIL=em;localStorage.setItem('paado_last_email',em);$('perr').textContent='';
@@ -114,70 +188,127 @@ $('emailF').onsubmit=async e=>{e.preventDefault();const em=$('email').value.trim
   $('pinMsg').textContent=r.needs_pin?`Hi ${r.name}! Create your 6-digit PIN`:`Hi ${r.name}. Enter your PIN`;
   $('emailF').classList.add('hide');$('pinStep').classList.remove('hide')};
 $('back').onclick=()=>{$('pinStep').classList.add('hide');$('emailF').classList.remove('hide');$('perr').textContent=''};
-$('pad').innerHTML=[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('');
+$('pad').innerHTML=[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<button class="blank" tabindex="-1"></button>':`<button data-k="${k}" aria-label="${k==='⌫'?'Delete':k}">${k}</button>`).join('');
 function paint(){[...$('dots').children].forEach((d,i)=>d.classList.toggle('f',i<entry.length))}
-$('pad').onclick=async e=>{const k=e.target.dataset.k;if(k==null)return;
+function shake(){$('dots').classList.remove('shake');void $('dots').offsetWidth;$('dots').classList.add('shake');try{navigator.vibrate&&navigator.vibrate([60,40,60])}catch(e){}}
+$('pad').addEventListener('click',async e=>{const k=e.target.closest('button')?.dataset.k;if(k==null)return;
+  try{navigator.vibrate&&navigator.vibrate(10)}catch(_){}
   if(k==='⌫')entry=entry.slice(0,-1);else if(entry.length<6)entry+=k;paint();
   if(entry.length<6)return;
-  const pin=entry;entry='';setTimeout(paint,150);
-  if(mode==='create'){first=pin;mode='confirm';$('pinMsg').textContent='Enter the same PIN again';$('perr').textContent='';return}
-  if(mode==='confirm'){if(pin!==first){mode='create';$('pinMsg').textContent='Create your 6-digit PIN';$('perr').textContent="PINs didn't match. Try again.";return}
+  const pin=entry;entry='';setTimeout(paint,180);
+  if(mode==='create'){first=pin;mode='confirm';$('pinMsg').textContent='Type the same PIN again';$('perr').textContent='';return}
+  if(mode==='confirm'){if(pin!==first){mode='create';$('pinMsg').textContent='Create your 6-digit PIN';$('perr').textContent="PINs didn't match. Try again.";shake();return}
     $('perr').textContent='Saving…';const r=await api({action:'staff_setpin',email:EMAIL,pin});
-    if(!r.ok){mode='create';$('pinMsg').textContent='Create your 6-digit PIN';$('perr').textContent=r.error;return}}
-  login(pin)};
+    if(!r.ok){mode='create';$('pinMsg').textContent='Create your 6-digit PIN';$('perr').textContent=r.error;shake();return}}
+  login(pin)});
 async function login(pin){$('perr').textContent='Signing in…';
   const r=await api({action:'staff_login',email:EMAIL,pin});
-  if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';sessionStorage.removeItem('paado_pin');
-    if(!$('loginS').classList.contains('hide'))return;location.reload();return}
+  if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';shake();sessionStorage.removeItem('paado_pin');PIN='';
+    if(EMAIL&&$('pinStep').classList.contains('hide')){$('emailF').requestSubmit()}return}
   PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;setCounts(r.checked_in,r.sold);
-  $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam()}
+  $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam();keepAwake();
+  clearInterval(window.__stats);window.__stats=setInterval(refreshCounts,30000)}
 function setCounts(i,s){if(i!=null)$('inCount').textContent=i;if(s!=null)$('soldCount').textContent=s}
-$('out').onclick=()=>{sessionStorage.removeItem('paado_pin');sessionStorage.removeItem('paado_email');location.reload()};
+async function refreshCounts(){if(document.hidden||!PIN)return;const r=await api({action:'staff_login',...auth()});if(r.ok)setCounts(r.checked_in,r.sold)}
+function logout(){sessionStorage.removeItem('paado_pin');sessionStorage.removeItem('paado_email');stopCam();location.reload()}
 
-/* ---------- camera + QR ---------- */
+/* ========== CAMERA ========== */
 async function startCam(){
-  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
-    const v=$('vid');v.srcObject=stream;await v.play();requestAnimationFrame(scan)}
-  catch(e){$('camErr').classList.remove('hide');$('camErr').textContent='Camera not available. Allow camera access in your browser settings, or type the ticket code below.'}}
-const cv=$('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+  $('camErr').classList.add('hide');
+  if(!navigator.mediaDevices?.getUserMedia){camFail('This browser cannot use the camera. Use Chrome (Android) or Safari (iPhone), or type codes below.');return}
+  try{stopCam();
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    track=stream.getVideoTracks()[0];const v=$('vid');v.srcObject=stream;await v.play();
+    const caps=track.getCapabilities?track.getCapabilities():{};$('torchBtn').classList.toggle('hide',!caps.torch);torch=false;$('torchBtn').classList.remove('on');
+    try{if(caps.focusMode&&caps.focusMode.includes('continuous'))await track.applyConstraints({advanced:[{focusMode:'continuous'}]})}catch(e){}
+    if(!window.__scanning){window.__scanning=true;requestAnimationFrame(scan)}}
+  catch(e){camFail(e&&e.name==='NotAllowedError'?'Camera permission was blocked. Allow camera for this site in your browser settings, then tap the button.':'Could not start the camera. Close other apps using it and try again.')}}
+window.startCam=startCam;
+function camFail(t){$('camErrTx').textContent=t;$('camErr').classList.remove('hide');$('torchBtn').classList.add('hide')}
+function stopCam(){try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(e){}stream=null;track=null}
+$('torchBtn').onclick=async()=>{if(!track)return;torch=!torch;try{await track.applyConstraints({advanced:[{torch}]});$('torchBtn').classList.toggle('on',torch)}catch(e){torch=false}};
+const cv=$('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});let frameN=0;
 function scan(){
-  const v=$('vid');
-  if(!busy&&v.readyState===v.HAVE_ENOUGH_DATA){
-    const s=Math.min(v.videoWidth,v.videoHeight),w=Math.min(640,s);cv.width=w;cv.height=w;
+  const v=$('vid');frameN++;
+  if(!busy&&!document.hidden&&v.readyState>=2&&v.videoWidth&&frameN%2===0){
+    const s=Math.min(v.videoWidth,v.videoHeight)*.8,w=Math.min(560,s);cv.width=w;cv.height=w;
     ctx.drawImage(v,(v.videoWidth-s)/2,(v.videoHeight-s)/2,s,s,0,0,w,w);
     const img=ctx.getImageData(0,0,w,w);const code=jsQR(img.data,w,w,{inversionAttempts:'dontInvert'});
     if(code&&code.data){const m=code.data.toUpperCase().match(/PIE-[A-Z0-9]{4,10}/);
-      if(m&&!(m[0]===lastCode&&Date.now()-lastAt<4000)){lastCode=m[0];lastAt=Date.now();check(m[0])}}
+      if(m&&!(m[0]===lastCode&&Date.now()-lastAt<5000)){lastCode=m[0];lastAt=Date.now();check(m[0])}
+      else if(!m){$('hint').textContent='That QR is not a Paado ticket';setTimeout(()=>$('hint').textContent='Point at the ticket QR code',2000)}}
   }
   requestAnimationFrame(scan)}
-$('manF').onsubmit=e=>{e.preventDefault();const c=$('manCode').value.trim();if(c){check(c.toUpperCase().startsWith('PIE-')?c:'PIE-'+c);$('manCode').value='';$('manCode').blur()}};
+async function keepAwake(){try{if('wakeLock' in navigator){wake=await navigator.wakeLock.request('screen')}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&PIN&&!$('scanS').classList.contains('hide')){keepAwake();if(!track||track.readyState!=='live')startCam();refreshCounts()}});
+addEventListener('online',()=>$('offline').classList.add('hide'));addEventListener('offline',()=>$('offline').classList.remove('hide'));
+if(!navigator.onLine)$('offline').classList.remove('hide');
 
-/* ---------- check + admit ---------- */
-function buzz(ok){try{navigator.vibrate&&navigator.vibrate(ok?80:[120,60,120]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.35))}catch(e){}}
+/* ========== SHEETS ========== */
+function sheet(html){$('sheetHost').innerHTML=`<div class="sheetbg" id="sbg"><div class="sheet"><div class="grab"></div>${html}</div></div>`;busy=true;
+  $('sbg').addEventListener('click',e=>{if(e.target.id==='sbg')closeSheet()})}
+function closeSheet(){$('sheetHost').innerHTML='';busy=false}
+window.closeSheet=closeSheet;
+$('typeBtn').onclick=()=>{sheet(`<h3>Type ticket code</h3><p class="sub">The code is printed under the QR, e.g. PIE-K7M2QX</p>
+  <form id="codeF"><input class="field code" id="codeIn" value="PIE-" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14"><button class="bigbtn">Check ticket</button><button type="button" class="bigbtn alt" onclick="closeSheet()">Cancel</button></form>`);
+  const i=$('codeIn');setTimeout(()=>{i.focus();i.setSelectionRange(4,4)},250);
+  $('codeF').onsubmit=e=>{e.preventDefault();let c=i.value.trim().toUpperCase().replace(/\s/g,'');if(!c.startsWith('PIE-'))c='PIE-'+c.replace(/^PIE/,'');if(c.length<8)return;closeSheet();check(c)}};
+$('findBtn').onclick=()=>{sheet(`<h3>Find guest</h3><p class="sub">Lost ticket or phone? Search by the phone number or name they bought with. <b>Check their ID.</b></p>
+  <form id="findF"><input class="field" id="findIn" placeholder="Phone number or name" autocomplete="off" autocapitalize="words"><button class="bigbtn">Search</button></form><div class="serr" id="ferr"></div><div class="res" id="fres"></div>`);
+  setTimeout(()=>$('findIn').focus(),250);
+  $('findF').onsubmit=async e=>{e.preventDefault();const q=$('findIn').value.trim();if(!q)return;$('ferr').textContent='Searching…';$('fres').innerHTML='';$('findIn').blur();
+    const r=await api({action:'staff_find',...auth(),q});
+    if(r.relogin)return logout();
+    if(r.error){$('ferr').textContent=r.error;return}
+    $('ferr').textContent=r.results.length?'':'No paid ticket found. Check spelling or try the phone number.';
+    $('fres').innerHTML=r.results.map(t=>{const left=t.total-t.used;return `<button type="button" data-c="${esc(t.code)}"><div><b>${esc(t.name)}</b><small>${esc(t.tier)} · ${esc(t.phone)} · ${esc(t.code)}</small></div><span class="tg ${left?'':'u'}">${left?left+' left':'used'}</span></button>`}).join('');
+    $('fres').querySelectorAll('button').forEach(b=>b.onclick=()=>{closeSheet();check(b.dataset.c)})}};
+$('menuBtn').onclick=()=>{sheet(`<h3>${esc($('staffName').textContent)}</h3><p class="sub">${esc(EMAIL)}</p>
+  <div class="mi"><span>Sound on scan</span><button id="sndBtn">${SOUND?'On':'Off'}</button></div>
+  <div class="mi"><span>Restart camera</span><button onclick="closeSheet();startCam()">Restart</button></div>
+  <div class="mi"><span>Install on home screen</span><button id="instBtn">How?</button></div>
+  <button class="bigbtn" style="margin-top:18px;background:var(--bad)" onclick="logout()">Sign out</button><button class="bigbtn alt" onclick="closeSheet()">Close</button>`);
+  $('sndBtn').onclick=()=>{SOUND=!SOUND;localStorage.setItem('paado_sound',SOUND?'on':'off');$('sndBtn').textContent=SOUND?'On':'Off'};
+  $('instBtn').onclick=async()=>{if(window.__bip){window.__bip.prompt();return}
+    $('instBtn').parentElement.insertAdjacentHTML('afterend',`<p class="sub" style="margin-top:10px">${/iPhone|iPad/.test(navigator.userAgent)?'In Safari: tap the Share button, then “Add to Home Screen”.':'In Chrome: tap ⋮ (top right), then “Add to Home screen” or “Install app”.'}</p>`)}};
+window.logout=logout;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__bip=e});
+
+/* ========== CHECK + ADMIT ========== */
+let actx;function beep(ok){if(!SOUND)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=ok?880:200;o.connect(g);g.connect(actx.destination);g.gain.value=.2;o.start();o.stop(actx.currentTime+(ok?.15:.4))}catch(e){}}
+function buzz(ok){beep(ok);try{navigator.vibrate&&navigator.vibrate(ok?90:[150,80,150])}catch(e){}}
 function when(t){const d=new Date(t);const mins=Math.round((Date.now()-d)/6e4);return (mins>=0&&mins<1?'just now':mins>=1&&mins<60?mins+' min ago':'at '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}))}
-function dots(total,used){return `<div class="ppl">${Array.from({length:Math.min(total,20)},(_,i)=>`<i class="${i<used?'u':''}"></i>`).join('')}</div>`}
-function show(cls,html){const r=$('res');r.className='result '+cls;r.innerHTML=html;r.classList.remove('hide')}
-function done(){$('res').classList.add('hide');busy=false}
-async function check(code){
-  busy=true;show('valid',`<div class="big">…</div><div class="code">${esc(code)}</div>`);$('res').style.background='#0f6b70';
-  const r=await api({action:'lookup',...auth(),code});$('res').style.background='';
-  if(r.error){if(r.relogin){$('out').click();return}show('invalid',`<div class="big">Error</div><div class="meta">${esc(r.error)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);buzz(false);return}
-  if(r.result==='invalid'){buzz(false);return show('invalid',`<div class="big">Not valid</div><div class="meta">No ticket with this code.</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
-  if(r.result==='unpaid'){buzz(false);return show('unpaid',`<div class="big">Not paid</div><div class="nm">${esc(r.name)}</div><div class="meta">Payment for this ticket was not completed.</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
-  if(r.result==='redeemed'){buzz(false);return show('redeemed',`<div class="big">Already redeemed</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.total>1?'all '+r.total+' people already entered':'this ticket was already used'}</div>${dots(r.total,r.used)}<div class="meta" style="margin-top:8px">${r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''}</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
-  buzz(true);
-  const left=r.left;
-  show('valid',`<div class="big">Valid ✓</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${left} of ${r.total} can enter${r.used?` · ${r.used} already redeemed`:''}</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>
-    <div class="acts"><button class="btn" onclick="admit('${esc(r.code)}',${left})">Admit ${left>1?'all '+left:'1'}</button>${left>1?`<button class="btn ghost" onclick="admit('${esc(r.code)}',1)">Admit 1 only</button>`:''}<button class="btn ghost" onclick="done()">Cancel</button></div>`);
-}
-window.admit=async(code,n)=>{
-  const r=await api({action:'checkin',...auth(),code,admit:n});
-  if(r.result==='admitted'){buzz(true);setCounts(Number($('inCount').textContent)+r.admitted);
-    show('admitted',`<div class="big">Admitted ${r.admitted}</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.used} of ${r.total} in</div>${dots(r.total,r.used)}<div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);
-    setTimeout(()=>{if(!$('res').classList.contains('hide')&&$('res').classList.contains('admitted'))done()},2500);return}
-  if(r.relogin){$('out').click();return}
-  buzz(false);show(r.result==='redeemed'?'redeemed':'invalid',`<div class="big">${r.result==='redeemed'?'Already redeemed':'Not admitted'}</div><div class="meta">${r.result==='redeemed'?(r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''):esc(r.error||'')}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)};
+function dots(total,used){return total>1?`<div class="ppl">${Array.from({length:Math.min(total,20)},(_,i)=>`<i class="${i<used?'u':''}"></i>`).join('')}</div>`:''}
+function show(cls,body,acts,auto){const r=$('res');r.className='result '+cls;r.innerHTML=`<div class="body">${body}</div>${auto?'<div class="auto"><i></i></div>':''}<div class="acts">${acts||''}</div>`;r.classList.remove('hide')}
+function done(){$('res').classList.add('hide');busy=false;clearTimeout(window.__autoT)}
 window.done=done;
+function addRecent(code,name,ok){RECENT.unshift({code,name,ok});RECENT=RECENT.slice(0,6);$('recent').innerHTML=RECENT.map(x=>`<span class="${x.ok?'a':'r'}">${x.ok?'✓':'✕'} ${esc((x.name||x.code).split(' ')[0])}</span>`).join('')}
+const NEXT=`<button onclick="done()">Scan next</button>`;
+async function check(code){
+  busy=true;show('loading',`<div class="spin"></div><div class="code" style="margin-top:14px">${esc(code)}</div>`);
+  const r=await api({action:'lookup',...auth(),code});
+  if(r.relogin)return logout();
+  if(r.error){buzz(false);return show('invalid',`<div class="ico">!</div><div class="big">Error</div><div class="meta">${esc(r.error)}</div>`,`<button onclick="check('${esc(code)}')">Try again</button><button class="ghost" onclick="done()">Cancel</button>`)}
+  if(r.result==='invalid'){buzz(false);addRecent(code,'',false);return show('invalid',`<div class="ico">✕</div><div class="big">Not valid</div><div class="meta">No ticket with this code. Don't let them in.</div><div class="code">${esc(r.code)}</div>`,NEXT)}
+  if(r.result==='unpaid'){buzz(false);addRecent(code,r.name,false);return show('unpaid',`<div class="ico">!</div><div class="big">Not paid</div><div class="nm">${esc(r.name)}</div><div class="meta">Payment for this ticket was not completed.</div><div class="code">${esc(r.code)}</div>`,NEXT)}
+  if(r.result==='redeemed'){buzz(false);addRecent(code,r.name,false);return show('redeemed',`<div class="ico">✕</div><div class="big">Already redeemed</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.total>1?'all '+r.total+' people already entered':'this ticket was already used'}</div>${dots(r.total,r.used)}<div class="meta" style="margin-top:10px">${r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''}</div><div class="code">${esc(r.code)}</div>`,NEXT)}
+  buzz(true);const left=r.left;
+  show('valid',`<div class="ico">✓</div><div class="big">Valid</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${left} of ${r.total} can enter${r.used?` · ${r.used} already in`:''}</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>`,
+    `<button onclick="admit('${esc(r.code)}',${left})">Admit ${left>1?'all '+left:'1 person'}</button>${left>1?`<div class="row2"><button class="ghost" onclick="pick('${esc(r.code)}',${left})">Admit some</button><button class="ghost" onclick="done()">Cancel</button></div>`:`<button class="ghost" onclick="done()">Cancel</button>`}`);
+}
+window.check=check;
+window.pick=(code,left)=>{const nums=Array.from({length:left},(_,i)=>i+1);
+  show('valid',`<div class="big" style="font-size:2.6rem">How many<br>are entering?</div>`,`<div style="display:grid;grid-template-columns:repeat(${Math.min(left,4)},1fr);gap:10px">${nums.map(n=>`<button onclick="admit('${esc(code)}',${n})">${n}</button>`).join('')}</div><button class="ghost" onclick="done()">Cancel</button>`)};
+window.admit=async(code,n)=>{
+  show('loading',`<div class="spin"></div>`);
+  const r=await api({action:'checkin',...auth(),code,admit:n});
+  if(r.relogin)return logout();
+  if(r.result==='admitted'){buzz(true);addRecent(code,r.name,true);setCounts(Number($('inCount').textContent)+r.admitted);
+    show('admitted',`<div class="ico">✓</div><div class="big">Admitted ${r.admitted}</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.used} of ${r.total} in</div>${dots(r.total,r.used)}`,NEXT,true);
+    window.__autoT=setTimeout(()=>{if($('res').classList.contains('admitted'))done()},2500);return}
+  buzz(false);
+  if(r.result==='redeemed')return show('redeemed',`<div class="ico">✕</div><div class="big">Already redeemed</div><div class="meta">${r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''}</div>`,NEXT);
+  show('invalid',`<div class="ico">!</div><div class="big">Not admitted</div><div class="meta">${esc(r.error||'Try again.')}</div>`,NEXT)};
 
 if(EMAIL&&PIN)login(PIN);
 </script>

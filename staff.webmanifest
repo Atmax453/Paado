@@ -1,0 +1,2 @@
+{"name":"Paado Gate","short_name":"Paado Gate","start_url":"staff.html","scope":"./","display":"standalone","orientation":"portrait","background_color":"#03211f","theme_color":"#03211f",
+"icons":[{"src":"assets/gate-192.png","sizes":"192x192","type":"image/png"},{"src":"assets/gate-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}
