@@ -28,7 +28,10 @@ body{font-family:var(--body);background:var(--deep);color:var(--cream);overflow:
 .pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;justify-content:center}
 .pad button{height:76px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--cream);font:400 1.9rem var(--display);cursor:pointer}
 .pad button:active{background:var(--sun-2);color:var(--ink)}
-.err{color:#ff8a80;font-weight:800;min-height:1.4em;margin-top:16px}
+.err{color:#ff8a80;font-weight:800;min-height:1.4em;margin-top:16px;max-width:320px}
+.estep{width:min(340px,100%)}
+.estep input{width:100%;padding:16px;border-radius:14px;border:0;font:700 1.05rem var(--body);text-align:center}
+.linkb{background:none;border:0;color:var(--cream);opacity:.7;text-decoration:underline;font:700 .9rem var(--body);margin-top:18px;cursor:pointer}
 /* scanner */
 .top{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;background:rgba(3,33,31,.9);z-index:3}
 .top b{font-family:var(--display);font-size:1.1rem;letter-spacing:.02em}
@@ -48,7 +51,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .btn.dark{background:rgba(255,255,255,.1);color:var(--cream)}
 /* result */
 .result{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px;gap:6px}
-.result.valid{background:var(--ok)}.result.admitted{background:var(--ok)}.result.used{background:var(--bad)}.result.invalid{background:var(--bad)}.result.unpaid{background:var(--warn);color:var(--ink)}
+.result.valid{background:var(--ok)}.result.admitted{background:var(--ok)}.result.used,.result.redeemed{background:var(--bad)}.result.invalid{background:var(--bad)}.result.unpaid{background:var(--warn);color:var(--ink)}
 .result .big{font-family:var(--display);font-size:clamp(3rem,16vw,5.5rem);line-height:.95;text-transform:uppercase}
 .result .nm{font-size:1.5rem;font-weight:800;margin-top:10px}
 .result .meta{font-weight:700;opacity:.9;font-size:1.05rem}
@@ -64,9 +67,17 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
 <div class="screen login" id="loginS">
   <h1>Paado <span>Gate</span></h1>
-  <p>Enter your 6-digit staff PIN</p>
-  <div class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-  <div class="pad" id="pad"></div>
+  <form id="emailF" class="estep">
+    <p>Sign in with your staff email</p>
+    <input id="email" type="email" required autocomplete="email" placeholder="you@email.com">
+    <button class="btn" style="width:100%;margin-top:12px">Continue</button>
+  </form>
+  <div id="pinStep" class="hide">
+    <p id="pinMsg">Enter your 6-digit PIN</p>
+    <div class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="pad" id="pad"></div>
+    <button class="linkb" id="back">Use a different email</button>
+  </div>
   <div class="err" id="perr"></div>
 </div>
 
@@ -90,21 +101,38 @@ const API="https://xzeahvkmvrdpxcfsgwqh.supabase.co/functions/v1/paado-tickets",
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=b=>fetch(API,{method:'POST',headers:{'content-type':'application/json',apikey:ANON},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({error:'No connection. Check your internet.'}));
-let PIN=sessionStorage.getItem('paado_pin')||'',entry='',busy=false,stream=null,lastCode='',lastAt=0;
+let EMAIL=sessionStorage.getItem('paado_email')||'',PIN=sessionStorage.getItem('paado_pin')||'',entry='',first='',mode='enter',busy=false,stream=null,lastCode='',lastAt=0;
+const auth=()=>({email:EMAIL,pin:PIN});
 
-/* ---------- PIN pad ---------- */
+/* ---------- email -> PIN ---------- */
+$('email').value=localStorage.getItem('paado_last_email')||'';
+$('emailF').onsubmit=async e=>{e.preventDefault();const em=$('email').value.trim().toLowerCase();$('perr').textContent='Checking…';
+  const r=await api({action:'staff_check',email:em});
+  if(!r.ok){$('perr').textContent=r.error;return}
+  EMAIL=em;localStorage.setItem('paado_last_email',em);$('perr').textContent='';
+  mode=r.needs_pin?'create':'enter';first='';entry='';paint();
+  $('pinMsg').textContent=r.needs_pin?`Hi ${r.name}! Create your 6-digit PIN`:`Hi ${r.name}. Enter your PIN`;
+  $('emailF').classList.add('hide');$('pinStep').classList.remove('hide')};
+$('back').onclick=()=>{$('pinStep').classList.add('hide');$('emailF').classList.remove('hide');$('perr').textContent=''};
 $('pad').innerHTML=[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k}</button>`).join('');
-$('pad').onclick=e=>{const k=e.target.dataset.k;if(k==null)return;
-  if(k==='⌫')entry=entry.slice(0,-1);else if(entry.length<6)entry+=k;
-  [...$('dots').children].forEach((d,i)=>d.classList.toggle('f',i<entry.length));
-  if(entry.length===6)login(entry)};
-async function login(pin){$('perr').textContent='Checking…';
-  const r=await api({action:'staff_login',pin});
-  if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';entry='';[...$('dots').children].forEach(d=>d.classList.remove('f'));sessionStorage.removeItem('paado_pin');return}
-  PIN=pin;sessionStorage.setItem('paado_pin',pin);$('staffName').textContent=r.name;setCounts(r.checked_in,r.sold);
+function paint(){[...$('dots').children].forEach((d,i)=>d.classList.toggle('f',i<entry.length))}
+$('pad').onclick=async e=>{const k=e.target.dataset.k;if(k==null)return;
+  if(k==='⌫')entry=entry.slice(0,-1);else if(entry.length<6)entry+=k;paint();
+  if(entry.length<6)return;
+  const pin=entry;entry='';setTimeout(paint,150);
+  if(mode==='create'){first=pin;mode='confirm';$('pinMsg').textContent='Enter the same PIN again';$('perr').textContent='';return}
+  if(mode==='confirm'){if(pin!==first){mode='create';$('pinMsg').textContent='Create your 6-digit PIN';$('perr').textContent="PINs didn't match. Try again.";return}
+    $('perr').textContent='Saving…';const r=await api({action:'staff_setpin',email:EMAIL,pin});
+    if(!r.ok){mode='create';$('pinMsg').textContent='Create your 6-digit PIN';$('perr').textContent=r.error;return}}
+  login(pin)};
+async function login(pin){$('perr').textContent='Signing in…';
+  const r=await api({action:'staff_login',email:EMAIL,pin});
+  if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';sessionStorage.removeItem('paado_pin');
+    if(!$('loginS').classList.contains('hide'))return;location.reload();return}
+  PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;setCounts(r.checked_in,r.sold);
   $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam()}
 function setCounts(i,s){if(i!=null)$('inCount').textContent=i;if(s!=null)$('soldCount').textContent=s}
-$('out').onclick=()=>{sessionStorage.removeItem('paado_pin');location.reload()};
+$('out').onclick=()=>{sessionStorage.removeItem('paado_pin');sessionStorage.removeItem('paado_email');location.reload()};
 
 /* ---------- camera + QR ---------- */
 async function startCam(){
@@ -126,30 +154,32 @@ $('manF').onsubmit=e=>{e.preventDefault();const c=$('manCode').value.trim();if(c
 
 /* ---------- check + admit ---------- */
 function buzz(ok){try{navigator.vibrate&&navigator.vibrate(ok?80:[120,60,120]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:220;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start();o.stop(a.currentTime+(ok?.15:.35))}catch(e){}}
+function when(t){const d=new Date(t);const mins=Math.round((Date.now()-d)/6e4);return (mins>=0&&mins<1?'just now':mins>=1&&mins<60?mins+' min ago':'at '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}))}
 function dots(total,used){return `<div class="ppl">${Array.from({length:Math.min(total,20)},(_,i)=>`<i class="${i<used?'u':''}"></i>`).join('')}</div>`}
 function show(cls,html){const r=$('res');r.className='result '+cls;r.innerHTML=html;r.classList.remove('hide')}
 function done(){$('res').classList.add('hide');busy=false}
 async function check(code){
   busy=true;show('valid',`<div class="big">…</div><div class="code">${esc(code)}</div>`);$('res').style.background='#0f6b70';
-  const r=await api({action:'lookup',pin:PIN,code});$('res').style.background='';
-  if(r.error){if(/PIN/.test(r.error)){$('out').click();return}show('invalid',`<div class="big">Error</div><div class="meta">${esc(r.error)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);buzz(false);return}
+  const r=await api({action:'lookup',...auth(),code});$('res').style.background='';
+  if(r.error){if(r.relogin){$('out').click();return}show('invalid',`<div class="big">Error</div><div class="meta">${esc(r.error)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);buzz(false);return}
   if(r.result==='invalid'){buzz(false);return show('invalid',`<div class="big">Not valid</div><div class="meta">No ticket with this code.</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
   if(r.result==='unpaid'){buzz(false);return show('unpaid',`<div class="big">Not paid</div><div class="nm">${esc(r.name)}</div><div class="meta">Payment for this ticket was not completed.</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
-  if(r.result==='used'){buzz(false);return show('used',`<div class="big">Already used</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · all ${r.total} admitted</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
+  if(r.result==='redeemed'){buzz(false);return show('redeemed',`<div class="big">Already redeemed</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.total>1?'all '+r.total+' people already entered':'this ticket was already used'}</div>${dots(r.total,r.used)}<div class="meta" style="margin-top:8px">${r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''}</div><div class="code">${esc(r.code)}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)}
   buzz(true);
   const left=r.left;
-  show('valid',`<div class="big">Valid ✓</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${left} of ${r.total} can enter</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>
+  show('valid',`<div class="big">Valid ✓</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${left} of ${r.total} can enter${r.used?` · ${r.used} already redeemed`:''}</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>
     <div class="acts"><button class="btn" onclick="admit('${esc(r.code)}',${left})">Admit ${left>1?'all '+left:'1'}</button>${left>1?`<button class="btn ghost" onclick="admit('${esc(r.code)}',1)">Admit 1 only</button>`:''}<button class="btn ghost" onclick="done()">Cancel</button></div>`);
 }
 window.admit=async(code,n)=>{
-  const r=await api({action:'checkin',pin:PIN,code,admit:n});
+  const r=await api({action:'checkin',...auth(),code,admit:n});
   if(r.result==='admitted'){buzz(true);setCounts(Number($('inCount').textContent)+r.admitted);
     show('admitted',`<div class="big">Admitted ${r.admitted}</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.used} of ${r.total} in</div>${dots(r.total,r.used)}<div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`);
     setTimeout(()=>{if(!$('res').classList.contains('hide')&&$('res').classList.contains('admitted'))done()},2500);return}
-  buzz(false);show(r.result==='used'?'used':'invalid',`<div class="big">${r.result==='used'?'Already used':'Not admitted'}</div><div class="meta">${esc(r.error||'')}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)};
+  if(r.relogin){$('out').click();return}
+  buzz(false);show(r.result==='redeemed'?'redeemed':'invalid',`<div class="big">${r.result==='redeemed'?'Already redeemed':'Not admitted'}</div><div class="meta">${r.result==='redeemed'?(r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''):esc(r.error||'')}</div><div class="acts"><button class="btn" onclick="done()">Scan next</button></div>`)};
 window.done=done;
 
-if(PIN)login(PIN);
+if(EMAIL&&PIN)login(PIN);
 </script>
 </body>
 </html>
