@@ -98,6 +98,16 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .res small{opacity:.65;font-weight:700}
 .res .tg{flex:none;font-weight:800;font-size:.75rem;padding:5px 10px;border-radius:99px;background:#e3f5ea;color:var(--ok)}
 .res .tg.u{background:#fde4e4;color:var(--bad)}
+.lost{text-align:center}
+.lost .who2{font-size:1.4rem;font-weight:800;margin-top:6px}
+.lost .ph{font-family:var(--display);font-size:2.4rem;letter-spacing:.04em;margin:14px 0 4px}
+.lost .ph em{font-style:normal;color:var(--sun);letter-spacing:.12em}
+.ask{background:#fff3d6;border-radius:14px;padding:12px;font-weight:700;margin:12px 0}
+.dig{display:flex;gap:10px;justify-content:center;margin:14px 0 4px}
+.dig span{width:58px;height:70px;border-radius:14px;border:2px solid rgba(0,0,0,.18);background:#fff;display:grid;place-items:center;font:400 2.2rem var(--display)}
+.dig span.f{border-color:var(--ink)}
+.dig.bad span{border-color:var(--bad);animation:shake .35s}
+.hidin{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
 .serr{color:var(--bad);font-weight:800;min-height:1.2em;margin-top:10px}
 .mi{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;border-bottom:1px solid rgba(0,0,0,.08);font-weight:700}
 .mi button{border:0;background:none;font:800 1rem var(--body);color:var(--ink);padding:6px 0}
@@ -252,8 +262,8 @@ window.closeSheet=closeSheet;
 $('typeBtn').onclick=()=>{sheet(`<h3>Type ticket code</h3><p class="sub">The code is printed under the QR, e.g. PIE-K7M2QX</p>
   <form id="codeF"><input class="field code" id="codeIn" value="PIE-" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="14"><button class="bigbtn">Check ticket</button><button type="button" class="bigbtn alt" onclick="closeSheet()">Cancel</button></form>`);
   const i=$('codeIn');setTimeout(()=>{i.focus();i.setSelectionRange(4,4)},250);
-  $('codeF').onsubmit=e=>{e.preventDefault();let c=i.value.trim().toUpperCase().replace(/\s/g,'');if(!c.startsWith('PIE-'))c='PIE-'+c.replace(/^PIE/,'');if(c.length<8)return;closeSheet();check(c)}};
-$('findBtn').onclick=()=>{sheet(`<h3>Find guest</h3><p class="sub">Lost ticket or phone? Search by the phone number or name they bought with. <b>Check their ID.</b></p>
+  $('codeF').onsubmit=e=>{e.preventDefault();let c=i.value.trim().toUpperCase().replace(/\s/g,'');if(!c.startsWith('PIE-'))c='PIE-'+c.replace(/^PIE/,'');if(c.length<8)return;closeSheet();check(c,'code')}};
+$('findBtn').onclick=()=>{sheet(`<h3>Find guest</h3><p class="sub">Lost ticket or phone? Search by the phone number or name they bought with. They will need to tell you the 4 hidden digits of that number.</p>
   <form id="findF"><input class="field" id="findIn" placeholder="Phone number or name" autocomplete="off" autocapitalize="words"><button class="bigbtn">Search</button></form><div class="serr" id="ferr"></div><div class="res" id="fres"></div>`);
   setTimeout(()=>$('findIn').focus(),250);
   $('findF').onsubmit=async e=>{e.preventDefault();const q=$('findIn').value.trim();if(!q)return;$('ferr').textContent='Searching…';$('fres').innerHTML='';$('findIn').blur();
@@ -261,8 +271,29 @@ $('findBtn').onclick=()=>{sheet(`<h3>Find guest</h3><p class="sub">Lost ticket o
     if(r.relogin)return logout();
     if(r.error){$('ferr').textContent=r.error;return}
     $('ferr').textContent=r.results.length?'':'No paid ticket found. Check spelling or try the phone number.';
-    $('fres').innerHTML=r.results.map(t=>{const left=t.total-t.used;return `<button type="button" data-c="${esc(t.code)}"><div><b>${esc(t.name)}</b><small>${esc(t.tier)} · ${esc(t.phone)} · ${esc(t.code)}</small></div><span class="tg ${left?'':'u'}">${left?left+' left':'used'}</span></button>`}).join('');
-    $('fres').querySelectorAll('button').forEach(b=>b.onclick=()=>{closeSheet();check(b.dataset.c)})}};
+    window.__found=r.results;
+    $('fres').innerHTML=r.results.map((t,i)=>{const left=t.total-t.used;return `<button type="button" data-i="${i}"><div><b>${esc(t.name)}</b><small>${esc(t.tier)} · ${esc(t.phone)}</small></div><span class="tg ${left&&!t.locked?'':'u'}">${t.locked?'locked':left?left+' left':'used'}</span></button>`}).join('');
+    $('fres').querySelectorAll('button').forEach(b=>b.onclick=()=>lostSheet(window.__found[+b.dataset.i]))}};
+function lostSheet(t){
+  const ph=esc(t.phone).replace('••••','<em>••••</em>');
+  sheet(`<div class="lost"><h3>Redeem lost ticket</h3><div class="who2">${esc(t.name)}</div><small style="font-weight:700;opacity:.6">${esc(t.tier)} · ${t.total-t.used} of ${t.total} can enter</small>
+    <div class="ph">${ph}</div>
+    <div class="ask">Ask the guest: <b>“What are the 4 hidden digits of the phone number you bought with?”</b> Don't show them this screen.</div>
+    <form id="lostF"><div class="dig" id="dig"><span></span><span></span><span></span><span></span></div>
+    <input id="digIn" class="hidin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+    <div class="serr" id="lerr"></div>
+    <button class="bigbtn" id="lostGo">Verify & redeem</button><button type="button" class="bigbtn alt" onclick="closeSheet()">Cancel</button></form></div>`);
+  const inp=$('digIn'),boxes=[...$('dig').children];
+  const draw=()=>{const v=inp.value.replace(/\D/g,'').slice(0,4);inp.value=v;boxes.forEach((b,i)=>{b.textContent=v[i]||'';b.classList.toggle('f',i<v.length)});$('dig').classList.remove('bad');if(v.length&&!t.locked)$('lerr').textContent=''};
+  inp.oninput=draw;$('dig').onclick=()=>inp.focus();setTimeout(()=>inp.focus(),250);
+  if(t.locked){$('lerr').textContent='Too many wrong attempts on this ticket. Locked for 15 minutes. Call the admin.';$('lostGo').disabled=true}
+  $('lostF').onsubmit=async e=>{e.preventDefault();if(inp.value.length!==4){$('lerr').textContent='Enter all 4 digits.';inp.focus();return}
+    $('lostGo').disabled=true;$('lostGo').textContent='Checking…';$('lerr').textContent='';
+    const r=await api({action:'lost_verify',...auth(),ref:t.ref,digits:inp.value});
+    if(r.relogin)return logout();
+    if(!r.ok){buzz(false);$('lerr').textContent=r.error||'Could not verify.';inp.value='';draw();$('dig').classList.add('bad');
+      $('lostGo').textContent='Verify & redeem';$('lostGo').disabled=!!r.locked;if(r.locked)t.locked=true;return}
+    closeSheet();busy=true;showResult(r,'lost')}}
 $('menuBtn').onclick=()=>{sheet(`<h3>${esc($('staffName').textContent)}</h3><p class="sub">${esc(EMAIL)}</p>
   <div class="mi"><span>Sound on scan</span><button id="sndBtn">${SOUND?'On':'Off'}</button></div>
   <div class="mi"><span>Restart camera</span><button onclick="closeSheet();startCam()">Restart</button></div>
@@ -284,24 +315,27 @@ function done(){$('res').classList.add('hide');busy=false;clearTimeout(window.__
 window.done=done;
 function addRecent(code,name,ok){RECENT.unshift({code,name,ok});RECENT=RECENT.slice(0,6);$('recent').innerHTML=RECENT.map(x=>`<span class="${x.ok?'a':'r'}">${x.ok?'✓':'✕'} ${esc((x.name||x.code).split(' ')[0])}</span>`).join('')}
 const NEXT=`<button onclick="done()">Scan next</button>`;
-async function check(code){
-  busy=true;show('loading',`<div class="spin"></div><div class="code" style="margin-top:14px">${esc(code)}</div>`);
+async function check(code,method){
+  method=method||'scan';busy=true;show('loading',`<div class="spin"></div><div class="code" style="margin-top:14px">${esc(code)}</div>`);
   const r=await api({action:'lookup',...auth(),code});
   if(r.relogin)return logout();
-  if(r.error){buzz(false);return show('invalid',`<div class="ico">!</div><div class="big">Error</div><div class="meta">${esc(r.error)}</div>`,`<button onclick="check('${esc(code)}')">Try again</button><button class="ghost" onclick="done()">Cancel</button>`)}
+  if(r.error){buzz(false);return show('invalid',`<div class="ico">!</div><div class="big">Error</div><div class="meta">${esc(r.error)}</div>`,`<button onclick="check('${esc(code)}','${method}')">Try again</button><button class="ghost" onclick="done()">Cancel</button>`)}
+  showResult(r,method)}
+function showResult(r,method){
+  const code=r.code;
   if(r.result==='invalid'){buzz(false);addRecent(code,'',false);return show('invalid',`<div class="ico">✕</div><div class="big">Not valid</div><div class="meta">No ticket with this code. Don't let them in.</div><div class="code">${esc(r.code)}</div>`,NEXT)}
   if(r.result==='unpaid'){buzz(false);addRecent(code,r.name,false);return show('unpaid',`<div class="ico">!</div><div class="big">Not paid</div><div class="nm">${esc(r.name)}</div><div class="meta">Payment for this ticket was not completed.</div><div class="code">${esc(r.code)}</div>`,NEXT)}
   if(r.result==='redeemed'){buzz(false);addRecent(code,r.name,false);return show('redeemed',`<div class="ico">✕</div><div class="big">Already redeemed</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.total>1?'all '+r.total+' people already entered':'this ticket was already used'}</div>${dots(r.total,r.used)}<div class="meta" style="margin-top:10px">${r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''}</div><div class="code">${esc(r.code)}</div>`,NEXT)}
   buzz(true);const left=r.left;
-  show('valid',`<div class="ico">✓</div><div class="big">Valid</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${left} of ${r.total} can enter${r.used?` · ${r.used} already in`:''}</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>`,
-    `<button onclick="admit('${esc(r.code)}',${left})">Admit ${left>1?'all '+left:'1 person'}</button>${left>1?`<div class="row2"><button class="ghost" onclick="pick('${esc(r.code)}',${left})">Admit some</button><button class="ghost" onclick="done()">Cancel</button></div>`:`<button class="ghost" onclick="done()">Cancel</button>`}`);
+  show('valid',`<div class="ico">✓</div><div class="big">${method==='lost'?'Verified':'Valid'}</div><div class="nm">${esc(r.name)}</div><div class="meta">${method==='lost'?'Lost ticket · phone digits confirmed<br>':''}${esc(r.tier)} · ${left} of ${r.total} can enter${r.used?` · ${r.used} already in`:''}</div>${dots(r.total,r.used)}<div class="code">${esc(r.code)}</div>`,
+    `<button onclick="admit('${esc(code)}',${left},'${method}')">Admit ${left>1?'all '+left:'1 person'}</button>${left>1?`<div class="row2"><button class="ghost" onclick="pick('${esc(code)}',${left},'${method}')">Admit some</button><button class="ghost" onclick="done()">Cancel</button></div>`:`<button class="ghost" onclick="done()">Cancel</button>`}`);
 }
 window.check=check;
-window.pick=(code,left)=>{const nums=Array.from({length:left},(_,i)=>i+1);
-  show('valid',`<div class="big" style="font-size:2.6rem">How many<br>are entering?</div>`,`<div style="display:grid;grid-template-columns:repeat(${Math.min(left,4)},1fr);gap:10px">${nums.map(n=>`<button onclick="admit('${esc(code)}',${n})">${n}</button>`).join('')}</div><button class="ghost" onclick="done()">Cancel</button>`)};
-window.admit=async(code,n)=>{
+window.pick=(code,left,method)=>{const nums=Array.from({length:left},(_,i)=>i+1);
+  show('valid',`<div class="big" style="font-size:2.6rem">How many<br>are entering?</div>`,`<div style="display:grid;grid-template-columns:repeat(${Math.min(left,4)},1fr);gap:10px">${nums.map(n=>`<button onclick="admit('${esc(code)}',${n},'${method||'scan'}')">${n}</button>`).join('')}</div><button class="ghost" onclick="done()">Cancel</button>`)};
+window.admit=async(code,n,method)=>{
   show('loading',`<div class="spin"></div>`);
-  const r=await api({action:'checkin',...auth(),code,admit:n});
+  const r=await api({action:'checkin',...auth(),code,admit:n,method:method||'scan'});
   if(r.relogin)return logout();
   if(r.result==='admitted'){buzz(true);addRecent(code,r.name,true);setCounts(Number($('inCount').textContent)+r.admitted);
     show('admitted',`<div class="ico">✓</div><div class="big">Admitted ${r.admitted}</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.used} of ${r.total} in</div>${dots(r.total,r.used)}`,NEXT,true);

@@ -73,7 +73,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .help{font-size:.82rem;color:var(--muted);margin-top:4px}
 .hbar{display:grid;grid-template-columns:54px 1fr 40px;gap:8px;align-items:center;font-size:.85rem;font-weight:700;margin:5px 0}
 .hbar .t{height:14px;background:#f1e8d6;border-radius:99px;overflow:hidden}.hbar .t i{display:block;height:100%;background:var(--sun)}
-.p-redeemed,.p-invalid{background:#fde4e4;color:var(--bad)}.p-admitted{background:#e3f5ea;color:var(--ok)}.p-unpaid{background:#fff3d6;color:#9a6a00}
+.p-redeemed,.p-invalid,.p-lost_failed{background:#fde4e4;color:var(--bad)}.p-admitted{background:#e3f5ea;color:var(--ok)}.p-unpaid{background:#fff3d6;color:#9a6a00}
 .sw{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:800;font-size:.8rem;border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;background:#fff}
 .sw i{width:30px;height:18px;border-radius:99px;background:#ccc;position:relative;transition:.2s}.sw i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
 .sw.on i{background:var(--ok)}.sw.on i::after{left:14px}
@@ -183,7 +183,8 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
       <div class="row"><div><h1>Check-ins</h1><p class="sub">Who scanned which tickets, and when.</p></div><div class="row right"><button class="btn ghost sm" id="logCsv">Export CSV</button><button class="btn ghost sm" onclick="loadLog()">Refresh</button></div></div>
       <div class="row card" style="margin-bottom:14px">
         <div><label>Staff</label><select id="fStaff"><option value="">All staff</option></select></div>
-        <div><label>Result</label><select id="fRes"><option value="">All results</option><option value="admitted">Admitted</option><option value="redeemed">Already redeemed</option><option value="invalid">Invalid</option><option value="unpaid">Unpaid</option></select></div>
+        <div><label>Result</label><select id="fRes"><option value="">All results</option><option value="admitted">Admitted</option><option value="redeemed">Already redeemed</option><option value="invalid">Invalid</option><option value="unpaid">Unpaid</option><option value="lost_failed">Lost-ticket claim failed</option></select></div>
+        <div><label>How</label><select id="fMeth"><option value="">Any way</option><option value="scan">QR scan</option><option value="code">Typed code</option><option value="lost">Lost ticket (phone digits)</option></select></div>
         <div><label>Ticket type</label><select id="fType"><option value="">All types</option></select></div>
         <div><label>From (Ghana time)</label><input type="datetime-local" id="fFrom"></div>
         <div><label>To</label><input type="datetime-local" id="fTo"></div>
@@ -195,7 +196,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
       </div>
       <div class="card" style="margin-top:14px"><h2 style="margin-top:0">By ticket type</h2><table><thead><tr><th>Type</th><th>People in</th><th>Rejected scans</th></tr></thead><tbody id="byTypeLog"></tbody></table></div>
       <h2>All scans</h2>
-      <div class="tw"><table><thead><tr><th>Time</th><th>Code</th><th>Holder</th><th>Type</th><th>Result</th><th>Admitted</th><th>Staff</th></tr></thead><tbody id="log"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Time</th><th>Code</th><th>Holder</th><th>Type</th><th>Result</th><th>How</th><th>Admitted</th><th>Staff</th></tr></thead><tbody id="log"></tbody></table></div>
     </section>
   </main>
 </div>
@@ -390,12 +391,12 @@ async function loadLog(){
   fill('fStaff',LOG.map(l=>l.staff_name),'All staff');fill('fType',LOG.map(l=>l.tier_name),'All types');
   renderLog();
 }
-function filtered(){const st=$('fStaff').value,rs=$('fRes').value,ty=$('fType').value,fr=$('fFrom').value?new Date($('fFrom').value+':00Z'):null,to=$('fTo').value?new Date($('fTo').value+':00Z'):null;
-  return LOG.filter(l=>(!st||l.staff_name===st)&&(!rs||l.result===rs)&&(!ty||l.tier_name===ty)&&(!fr||new Date(l.created_at)>=fr)&&(!to||new Date(l.created_at)<=to))}
+function filtered(){const mt=$('fMeth').value,st=$('fStaff').value,rs=$('fRes').value,ty=$('fType').value,fr=$('fFrom').value?new Date($('fFrom').value+':00Z'):null,to=$('fTo').value?new Date($('fTo').value+':00Z'):null;
+  return LOG.filter(l=>(!mt||(l.method||'scan')===mt)&&(!st||l.staff_name===st)&&(!rs||l.result===rs)&&(!ty||l.tier_name===ty)&&(!fr||new Date(l.created_at)>=fr)&&(!to||new Date(l.created_at)<=to))}
 function renderLog(){
   const L=filtered();const adm=L.filter(l=>l.result==='admitted');const rej=L.filter(l=>l.result!=='admitted');
   const ppl=adm.reduce((a,l)=>a+l.admitted,0);
-  $('logStats').innerHTML=[['hl',ppl,'People let in'],['',L.length,'Total scans'],['',L.filter(l=>l.result==='redeemed').length,'Already-redeemed attempts'],['',L.filter(l=>l.result==='invalid'||l.result==='unpaid').length,'Invalid / unpaid']]
+  $('logStats').innerHTML=[['hl',ppl,'People let in'],['',L.length,'Total scans'],['',L.filter(l=>l.result==='redeemed').length,'Already-redeemed attempts'],['',L.filter(l=>l.result==='invalid'||l.result==='unpaid').length,'Invalid / unpaid'],['',L.filter(l=>l.result==='lost_failed').length,'Failed lost-ticket claims'],['',adm.filter(l=>l.method==='lost').reduce((a,l)=>a+l.admitted,0),'Let in via lost-ticket check']]
     .map(([c,v,t])=>`<div class="card stat ${c}"><b>${v}</b><span>${t}</span></div>`).join('');
   const by={};L.forEach(l=>{const k=l.staff_name||'Unknown';by[k]=by[k]||{p:0,s:0,r:0,last:null};by[k].s++;if(l.result==='admitted')by[k].p+=l.admitted;else by[k].r++;if(!by[k].last||l.created_at>by[k].last)by[k].last=l.created_at});
   $('byStaff').innerHTML=Object.entries(by).sort((a,b)=>b[1].p-a[1].p).map(([k,v])=>`<tr><td><b>${esc(k)}</b></td><td>${v.p}</td><td>${v.s}</td><td>${v.r}</td><td>${fmt(v.last)}</td></tr>`).join('')||'<tr><td colspan="5">No scans.</td></tr>';
@@ -404,11 +405,11 @@ function renderLog(){
   $('byHour').innerHTML=keys.map(k=>{const d=new Date(k+':00:00Z');return `<div class="hbar"><span>${d.toLocaleString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'})}</span><div class="t"><i style="width:${hrs[k]/mx*100}%"></i></div><span>${hrs[k]}</span></div>`}).join('')||'<p class="help">No one admitted yet.</p>';
   const bt={};L.forEach(l=>{const k=l.tier_name||'Unknown';bt[k]=bt[k]||{p:0,r:0};if(l.result==='admitted')bt[k].p+=l.admitted;else bt[k].r++});
   $('byTypeLog').innerHTML=Object.entries(bt).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.p}</td><td>${v.r}</td></tr>`).join('')||'<tr><td colspan="3">No scans.</td></tr>';
-  const lbl={admitted:'admitted',redeemed:'already redeemed',invalid:'invalid',unpaid:'unpaid',used:'already redeemed'};
-  $('log').innerHTML=L.slice(0,500).map(l=>`<tr><td>${fmt(l.created_at)}</td><td class="mono">${esc(l.code)}</td><td>${esc(l.holder||'')}</td><td>${esc(l.tier_name||'')}</td><td><span class="pill p-${esc(l.result)}">${esc(lbl[l.result]||l.result)}</span></td><td>${l.admitted}</td><td>${esc(l.staff_name)}</td></tr>`).join('')||'<tr><td colspan="7">No scans match.</td></tr>';
+  const lbl={admitted:'admitted',redeemed:'already redeemed',invalid:'invalid',unpaid:'unpaid',used:'already redeemed',lost_failed:'lost claim failed'};const how={scan:'QR scan',code:'typed code',lost:'lost ticket ✓ digits'};
+  $('log').innerHTML=L.slice(0,500).map(l=>`<tr><td>${fmt(l.created_at)}</td><td class="mono">${esc(l.code)}</td><td>${esc(l.holder||'')}</td><td>${esc(l.tier_name||'')}</td><td><span class="pill p-${esc(l.result)}">${esc(lbl[l.result]||l.result)}</span></td><td>${esc(how[l.method]||'QR scan')}</td><td>${l.admitted}</td><td>${esc(l.staff_name)}</td></tr>`).join('')||'<tr><td colspan="8">No scans match.</td></tr>';
 }
-['fStaff','fRes','fType','fFrom','fTo'].forEach(id=>$(id).onchange=renderLog);
-$('logCsv').onclick=()=>{const cols=['created_at','code','holder','tier_name','result','admitted','staff_name','staff_email'];
+['fStaff','fRes','fType','fFrom','fTo','fMeth'].forEach(id=>$(id).onchange=renderLog);
+$('logCsv').onclick=()=>{const cols=['created_at','code','holder','tier_name','result','method','admitted','staff_name','staff_email'];
   const out=[cols.join(',')].concat(filtered().map(r=>cols.map(c=>`"${String(r[c]??'').replace(/"/g,'""')}"`).join(','))).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='paado-checkins.csv';a.click()};
 
