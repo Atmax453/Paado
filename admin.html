@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#03211f">
 <meta name="robots" content="noindex">
 <title>Paado Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,6 +79,81 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .sw i{width:30px;height:18px;border-radius:99px;background:#ccc;position:relative;transition:.2s}.sw i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
 .sw.on i{background:var(--ok)}.sw.on i::after{left:14px}
 .tag.comp{background:#dff3ff}
+
+/* ================= MOBILE ================= */
+.mbtn{display:none;background:none;border:0;color:var(--cream);font-size:1.6rem;line-height:1;padding:4px 6px;cursor:pointer}
+.bnav{display:none}
+.filters summary{display:none}
+@media (max-width:760px){
+  body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  input,select,textarea{font-size:16px}
+  .hin{padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+  .logo{font-size:1.15rem}
+  .mbtn{display:block}
+  .who{display:none;position:absolute;top:100%;right:10px;left:10px;flex-direction:column;align-items:stretch;gap:0;background:var(--deep);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:6px;box-shadow:0 20px 40px rgba(0,0,0,.35);opacity:1;font-size:1rem}
+  .who.open{display:flex}
+  .who>*{padding:14px 12px;border-bottom:1px solid rgba(255,255,255,.08);text-decoration:none}
+  .who>*:last-child{border:0;margin-top:6px;justify-content:center}
+  .who span{opacity:.7;font-size:.85rem}
+  .tabs{display:none}
+  .bnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--deep);padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.08)}
+  .bnav button{background:none;border:0;color:var(--cream);opacity:.6;font:800 .7rem var(--body);display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer}
+  .bnav button.on{opacity:1;color:var(--sun-2)}
+  .bnav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .bnav .mid svg{background:var(--sun);color:var(--ink);stroke:var(--ink);border-radius:14px;width:44px;height:34px;padding:5px 10px;margin-top:-2px}
+  .bnav .mid{opacity:1}
+  main{padding:18px 14px 30px}
+  h1{font-size:1.9rem}
+  h2{font-size:1.2rem;margin:22px 0 10px}
+  .sub{font-size:.9rem;margin-bottom:14px}
+  .card{padding:16px;border-radius:16px}
+  .grid{gap:10px}
+  .g4{grid-template-columns:1fr 1fr}
+  .g2{grid-template-columns:1fr}
+  .stat b{font-size:1.8rem}
+  .stat span{font-size:.78rem}
+  .stat.hl{grid-column:1/-1}
+  .row>*{flex:1 1 100%}
+  .row.right{flex-wrap:nowrap}.row.right>*{flex:0 0 auto}
+  section>.row:first-child{align-items:flex-start}
+  section>.row:first-child>div:first-child{flex:1 1 100%}
+  section>.row:first-child>.row.right{flex:1 1 100%;justify-content:flex-start;margin:-6px 0 12px}
+  /* filters collapse */
+  .filters summary{display:flex;justify-content:space-between;align-items:center;list-style:none;cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 16px;font-weight:800;margin-bottom:10px}
+  .filters summary::-webkit-details-marker{display:none}
+  .filters summary::after{content:"▾";transition:.2s}
+  .filters[open] summary::after{transform:rotate(180deg)}
+  .fgrid{display:grid!important;grid-template-columns:1fr 1fr;gap:4px 10px}
+  .fgrid>div:nth-last-child(-n+2){grid-column:span 1}
+  /* tables become cards */
+  .tw{background:none;border:0;border-radius:0;overflow:visible}
+  table.resp thead{display:none}
+  table.resp,table.resp tbody,table.resp tr,table.resp td{display:block;width:100%}
+  table.resp tr{background:#fff;border:1px solid var(--line);border-radius:16px;padding:6px 14px;margin-bottom:10px}
+  table.resp td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;border-bottom:1px dashed var(--line);padding:9px 0;text-align:right;font-size:.92rem}
+  table.resp td:last-child{border-bottom:0}
+  table.resp td::before{content:attr(data-label);font-size:.68rem;font-weight:800;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;text-align:left;flex:none}
+  table.resp td[data-label=""]::before{display:none}
+  table.resp td[data-label=""]{justify-content:flex-end;gap:8px;flex-wrap:wrap;padding-top:12px}
+  table.resp td:first-child{font-size:1rem}
+  table.resp td>div,table.resp td .help{text-align:right}
+  table.resp td[colspan]{justify-content:center;text-align:center}
+  table.resp td[colspan]::before{display:none}
+  .card table.resp tr{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:4px 0;margin:0}
+  .card table.resp tr:last-child{border-bottom:0}
+  .btn.sm{padding:9px 14px}
+  .types{grid-template-columns:1fr}
+  .type .sw{flex:1 1 100%;justify-content:flex-start}
+  .modal{padding:0;align-items:flex-end}
+  .mbox{border-radius:22px 22px 0 0;max-height:94vh;padding:18px 16px calc(18px + env(safe-area-inset-bottom));width:100%}
+  .mbox .row>*{flex:1 1 calc(50% - 10px)}
+  .login{margin:6vh 14px;padding:24px}
+  .pin{font-size:2.4rem}
+  #setF .row.right{flex-wrap:wrap}
+  #setF .row.right .btn{width:100%}
+  .msg{flex:1 1 100%}
+  .hbar{grid-template-columns:48px 1fr 34px}
+}
 </style>
 </head>
 <body>
@@ -98,12 +174,19 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 
 <div id="app" class="hide">
   <header>
-    <div class="hin"><div class="logo">PAADO ISLAND<small>ADMIN</small></div><div class="who"><span id="who"></span><a href="./" target="_blank">View site ↗</a><a href="staff.html" target="_blank">Staff scanner ↗</a><button class="btn sm sun" id="logout">Sign out</button></div></div>
+    <div class="hin"><div class="logo">PAADO ISLAND<small>ADMIN</small></div><button class="mbtn" id="mMenu" aria-label="Menu">☰</button><div class="who" id="whoBox"><span id="who"></span><a href="./" target="_blank">View site ↗</a><a href="staff.html" target="_blank">Staff scanner ↗</a><button class="btn sm sun" id="logout">Sign out</button></div></div>
     <nav class="tabs" id="tabs">
       <button data-t="dash" class="on">Dashboard</button><button data-t="orders">Orders</button><button data-t="issue">Issue ticket</button>
       <button data-t="types">Ticket types</button><button data-t="staff">Staff</button><button data-t="settings">Event settings</button><button data-t="log">Check-ins</button>
     </nav>
   </header>
+  <nav class="bnav" id="bnav">
+    <button data-t="dash" class="on"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/></svg>Home</button>
+    <button data-t="orders"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Orders</button>
+    <button data-t="issue" class="mid"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Issue</button>
+    <button data-t="log"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Check-ins</button>
+    <button data-t="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+  </nav>
   <main>
     <!-- DASHBOARD -->
     <section data-v="dash">
@@ -181,14 +264,15 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
     <!-- LOG -->
     <section data-v="log" class="hide">
       <div class="row"><div><h1>Check-ins</h1><p class="sub">Who scanned which tickets, and when.</p></div><div class="row right"><button class="btn ghost sm" id="logCsv">Export CSV</button><button class="btn ghost sm" onclick="loadLog()">Refresh</button></div></div>
-      <div class="row card" style="margin-bottom:14px">
+      <details class="filters" id="logFilters" open><summary>Filters</summary>
+      <div class="row card fgrid" style="margin-bottom:14px">
         <div><label>Staff</label><select id="fStaff"><option value="">All staff</option></select></div>
         <div><label>Result</label><select id="fRes"><option value="">All results</option><option value="admitted">Admitted</option><option value="redeemed">Already redeemed</option><option value="invalid">Invalid</option><option value="unpaid">Unpaid</option><option value="lost_failed">Lost-ticket claim failed</option></select></div>
         <div><label>How</label><select id="fMeth"><option value="">Any way</option><option value="scan">QR scan</option><option value="code">Typed code</option><option value="lost">Lost ticket (phone digits)</option></select></div>
         <div><label>Ticket type</label><select id="fType"><option value="">All types</option></select></div>
         <div><label>From (Ghana time)</label><input type="datetime-local" id="fFrom"></div>
         <div><label>To</label><input type="datetime-local" id="fTo"></div>
-      </div>
+      </div></details>
       <div class="grid g4" id="logStats"></div>
       <div class="grid g2" style="margin-top:14px">
         <div class="card"><h2 style="margin-top:0">By staff</h2><table><thead><tr><th>Staff</th><th>People in</th><th>Scans</th><th>Rejected</th><th>Last scan</th></tr></thead><tbody id="byStaff"></tbody></table></div>
@@ -413,6 +497,26 @@ $('logCsv').onclick=()=>{const cols=['created_at','code','holder','tier_name','r
   const out=[cols.join(',')].concat(filtered().map(r=>cols.map(c=>`"${String(r[c]??'').replace(/"/g,'""')}"`).join(','))).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='paado-checkins.csv';a.click()};
 
+
+/* ---------- mobile helpers ---------- */
+function labelTables(){document.querySelectorAll('table').forEach(t=>{const heads=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim());if(!heads.length)return;t.classList.add('resp');
+  t.querySelectorAll('tbody tr').forEach(tr=>[...tr.children].forEach((td,i)=>{if(!td.hasAttribute('data-label'))td.setAttribute('data-label',heads[i]||'')}))})}
+new MutationObserver(()=>{clearTimeout(window.__lt);window.__lt=setTimeout(labelTables,30)}).observe(document.body,{childList:true,subtree:true});
+$('mMenu').onclick=e=>{e.stopPropagation();$('whoBox').classList.toggle('open')};
+document.addEventListener('click',e=>{if(!e.target.closest('#whoBox'))$('whoBox').classList.remove('open')});
+function goTab(t){const b=document.querySelector(`#tabs button[data-t="${t}"]`);if(b)b.click();
+  document.querySelectorAll('#bnav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t||(x.dataset.t==='more'&&['types','staff','settings'].includes(t))));scrollTo(0,0)}
+$('bnav').onclick=e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.t==='more'){openM(`<h2 style="margin-top:0">More</h2><div style="display:grid;gap:10px">
+    <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('types')">🎟️&nbsp; Ticket types</button>
+    <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('staff')">👥&nbsp; Staff</button>
+    <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('settings')">⚙️&nbsp; Event settings</button>
+    <a class="btn ghost" style="justify-content:flex-start;padding:16px" href="staff.html" target="_blank">📷&nbsp; Open staff scanner</a>
+    <a class="btn ghost" style="justify-content:flex-start;padding:16px" href="./" target="_blank">🌴&nbsp; View website</a>
+    <button class="btn" onclick="closeM()">Close</button></div>`);return}
+  goTab(b.dataset.t)};
+window.goTab=goTab;
+if(matchMedia('(max-width:760px)').matches)$('logFilters').removeAttribute('open');
 boot();
 </script>
 </body>
