@@ -156,7 +156,8 @@ $('hScan').onclick=()=>{sessionStorage.setItem('paado_email',EMAIL);sessionStora
 $('hOut').onclick=()=>{sessionStorage.removeItem('pi_email');sessionStorage.removeItem('pi_pin');location.reload()};
 
 /* ---------- app ---------- */
-function boot(r){DATA=r;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').innerHTML=esc(r.name)+`<br><span class="lvl">${r.level==='minor'?'MINOR ISSUER':'MAJOR ISSUER'}</span>`;
+const GRP={};
+function boot(r){DATA=r;r.events.forEach(e=>{if(GRP[e.id]===undefined){GRP[e.id]='';api({action:'info',event:e.slug}).then(x=>{GRP[e.id]=(x&&x.settings&&x.settings.group_link)||''})}});$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').innerHTML=esc(r.name)+`<br><span class="lvl">${r.level==='minor'?'MINOR ISSUER':'MAJOR ISSUER'}</span>`;
   $('minorNote').classList.toggle('hide',r.level!=='minor');if(r.level==='minor')$('minorNote').textContent=`Free tickets (₵0) need approval${r.supervisor?' from '+r.supervisor+' first':' from a major issuer'}. Paid tickets go out straight away.`;
   api({action:'staff_login',email:EMAIL,pin:PIN}).then(x=>$('hScan').classList.toggle('hide',!(x&&x.ok)));
   $('teamBox').classList.toggle('hide',r.level!=='major');if(r.level==='major')loadTeam();
@@ -206,7 +207,8 @@ async function issue(req,force){$('sheet').querySelectorAll('button').forEach(b=
   showDone(r)}
 function showDone(r){$('ov').dataset.lock='1';
   const first=r.name.split(' ')[0];
-  const text=r.mode==='link'?`Hi ${first}, here's your personal Paado Island Experience ticket link 🌴\n${r.link}\nOpen it and tap "Get my ticket". It works once, so don't share it.`:`Hi ${first}, here's your Paado Island Experience ticket 🌴\n${r.link}\nShow the QR code at the gate. See you on the island!`;
+  const g=GRP[(curEv()||{}).id]||'';const gl=g?`\nJoin the attendees' WhatsApp group for updates: ${g}`:'';
+  const text=(r.mode==='link'?`Hi ${first}, here's your personal Paado Island Experience ticket link 🌴\n${r.link}\nOpen it and tap "Get my ticket". It works once, so don't share it.`:`Hi ${first}, here's your Paado Island Experience ticket 🌴\n${r.link}\nShow the QR code at the gate. See you on the island!`)+gl;
   const wa='https://wa.me/233'+r.phone.slice(1)+'?text='+encodeURIComponent(text);
   openS(`<h3>${r.mode==='link'?'Link ready ✓':'Ticket ready ✓'}</h3><p style="font-weight:600">${esc(r.type)} for <b>${esc(r.name)}</b> · ${esc(r.phone)}</p><div class="lk">${esc(r.link)}</div>
     <a class="wa" href="${wa}" target="_blank" rel="noopener">Send to ${esc(first)} on WhatsApp</a><button class="ghost" id="sCopy">Copy message</button><button class="ghost" id="sNext">Issue another ticket</button>`);

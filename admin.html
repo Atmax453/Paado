@@ -316,6 +316,7 @@ tr.justnow td{animation:shflash 1.6s ease}
           <h2 style="margin-top:0">Contact & content</h2>
           <label>Phone numbers (comma separated)</label><input name="phones">
           <label>WhatsApp number (international, no +)</label><input name="whatsapp" placeholder="233554082123">
+          <label>Attendee WhatsApp group link</label><input name="group_link" placeholder="https://chat.whatsapp.com/…"><p class="help" style="margin:4px 0 0">Added to every ticket message and shown as a “Join the group” button on tickets.</p>
           <label>Activities (one per line: Name | label)</label><textarea name="activities"></textarea>
           <label>Chill zone</label><input name="chill">
           <label>Partners</label><textarea name="partners" style="min-height:70px"></textarea>
@@ -675,7 +676,7 @@ async function issueBatch(){
   }
   window.__batchDone=done;
   const link=c=>SITE+'?t='+encodeURIComponent(c);
-  const msgFor=r=>`Hi ${r.name}, here is your Paado Island Experience ticket 🌴\n${link(r.code)}\nShow the QR at the gate. ${SET.date_label||''} · ${SET.time_label||''} · ${SET.venue||''}`;
+  const msgFor=r=>`Hi ${r.name}, here is your Paado Island Experience ticket 🌴\n${link(r.code)}\nShow the QR at the gate. ${SET.date_label||''} · ${SET.time_label||''} · ${SET.venue||''}${grpLine()}`;
   $('bResult').innerHTML=`<div class="card" style="margin-top:14px">
     <h2 style="margin-top:0">${done.length} ticket${done.length===1?'':'s'} issued${failed.length?` · <span class="bt-bad">${failed.length} failed</span>`:''}</h2>
     <p class="help">Send each person their ticket link. Tap <b>Send</b> to open WhatsApp with the message ready, or download the list.</p>
@@ -814,7 +815,8 @@ $('isCsv').onclick=()=>{const out=['time,issuer,issuer_email,guest,phone,ticket,
 /* ---------- share tracking ---------- */
 let SH=[],SHSEG='todo',SHSEL=new Set(),SHJUST=null;
 const tLink=c=>SITE+'?t='+encodeURIComponent(c);
-const shareMsg=r=>`Hi ${r.name}, here is your ${EV?.name||'Paado Island Experience'} ticket 🌴\n${tLink(r.code)}\nShow the QR at the gate. ${[SET.date_label,SET.time_label,SET.venue].filter(Boolean).join(' · ')}`;
+const grpLine=()=>SET.group_link?`\nJoin the attendees' WhatsApp group for updates: ${SET.group_link}`:'';
+const shareMsg=r=>`Hi ${r.name}, here is your ${EV?.name||'Paado Island Experience'} ticket 🌴\n${tLink(r.code)}\nShow the QR at the gate. ${[SET.date_label,SET.time_label,SET.venue].filter(Boolean).join(' · ')}${grpLine()}`;
 async function markShared(codes,via,undo=false){codes=[].concat(codes).filter(Boolean);if(!codes.length)return;
   const {error}=await sb.rpc('paado_mark_shared',{p_codes:codes,p_via:via||'manual',p_undo:!!undo});if(error){console.error(error);return}
   const now=new Date().toISOString(),me=(window.__me||'').toLowerCase();
@@ -864,7 +866,7 @@ window.shCopyLink=async(code,btn)=>{await navigator.clipboard.writeText(tLink(co
 const newToken=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';const r=crypto.getRandomValues(new Uint8Array(12));return [...r].map(b=>a[b%a.length]).join('')};
 const invLink=tk=>SITE+'?i='+tk;
 const pubLink=t=>SITE+'?buy='+encodeURIComponent(t.slug)+(EV&&!EV.is_default?'&e='+encodeURIComponent(EV.slug):'');
-const invMsg=(t,l)=>`Hi! Here's your personal ${t.name} ticket link for ${EV.name} 🌴\n${l}\nIt works once: fill in your name and number to ${t.complimentary||!(Number(t.price)>0)?'get your free ticket':'buy your ticket'}.`;
+const invMsg=(t,l)=>`Hi! Here's your personal ${t.name} ticket link for ${EV.name} 🌴\n${l}\nIt works once: fill in your name and number to ${t.complimentary||!(Number(t.price)>0)?'get your free ticket':'buy your ticket'}.${grpLine()}`;
 window.shareType=async id=>{const t=TYPES.find(x=>x.id===id);if(!t)return;
   const free=t.complimentary||!(Number(t.price)>0),isPublic=!t.hidden&&!t.complimentary;
   openM(`<h2 style="margin-top:0">Share “${esc(t.name)}”</h2>
@@ -978,11 +980,12 @@ window.editEvent=id=>{const e=EVENTS.find(x=>x.id===id)||{name:'',slug:'',status
 async function loadSettings(){SET=(EV&&EV.settings)||{}}
 const toLocal=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toISOString().slice(0,16)};
 function fillSettings(){$('setSub').innerHTML=`Settings for <b>${esc(EV.name)}</b>. Changes show on ${EV.is_default?'the main website':'this event\'s page'} immediately.`;const f=$('setF');
-  ['date_label','time_label','edition','venue','presenter','tagline','transport','ussd','whatsapp','chill','partners','media_partners'].forEach(k=>{if(f[k])f[k].value=SET[k]??''});
+  ['date_label','time_label','edition','venue','presenter','tagline','transport','ussd','whatsapp','group_link','chill','partners','media_partners'].forEach(k=>{if(f[k])f[k].value=SET[k]??''});
   f.event_date.value=toLocal(SET.event_date);f.sales_close.value=toLocal(SET.sales_close);f.sales_open.checked=SET.sales_open!==false;
   f.phones.value=(SET.phones||[]).join(', ');f.activities.value=(SET.activities||[]).map(a=>`${a.n} | ${a.m}`).join('\n')}
 $('setF').onsubmit=async e=>{e.preventDefault();const f=e.target;const d={...SET};
-  ['date_label','time_label','edition','venue','presenter','tagline','transport','ussd','whatsapp','chill','partners','media_partners'].forEach(k=>d[k]=f[k].value.trim());
+  {const g=f.group_link.value.trim();if(g&&!/^https:\/\/(chat\.whatsapp\.com|whatsapp\.com\/channel)\//.test(g))return msg($('setMsg'),'The group link should start with https://chat.whatsapp.com/');f.group_link.value=g.split('?')[0]}
+  ['date_label','time_label','edition','venue','presenter','tagline','transport','ussd','whatsapp','group_link','chill','partners','media_partners'].forEach(k=>d[k]=f[k].value.trim());
   if(f.event_date.value)d.event_date=f.event_date.value+':00Z';if(f.sales_close.value)d.sales_close=f.sales_close.value+':00Z';
   d.sales_open=f.sales_open.checked;d.phones=f.phones.value.split(',').map(s=>s.trim()).filter(Boolean);
   d.activities=f.activities.value.split('\n').map(l=>l.split('|').map(s=>s.trim())).filter(a=>a[0]).map(a=>({n:a[0],m:a[1]||''}));
