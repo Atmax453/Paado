@@ -101,14 +101,16 @@
     rr(ctx, qx, qy, qs, qs, 14); ctx.fillStyle = '#fff'; ctx.fill();
     ctx.fillStyle = '#0b0b0b';
     for (let r = 0; r < n; r++) for (let cc = 0; cc < n; cc++) if (m[r][cc]) ctx.fillRect(qx + cell * (cc + 1), qy + cell * (r + 1), cell, cell);
-    // tier + price
+    // ticket type + how many it admits (no price)
     const total = (t.qty || 1) * (t.people || 1);
     ctx.fillStyle = theme.accent; ctx.font = '22px Anton'; ctx.textAlign = 'center';
     ctx.fillText(t.code, qx + qs / 2, qy + qs + 34);
-    ctx.font = '46px Anton'; ctx.fillStyle = '#0b0b0b';
-    ctx.fillText(String(t.tier_name || 'Ticket').toUpperCase(), qx + qs / 2, qy + qs + 92);
+    ctx.fillStyle = '#0b0b0b';
+    { const label = String(t.tier_name || 'Ticket').toUpperCase(); let fs = 46; ctx.font = fs + 'px Anton';
+      while (fs > 20 && ctx.measureText(label).width > qs + 20) { fs -= 2; ctx.font = fs + 'px Anton'; }
+      ctx.fillText(label, qx + qs / 2, qy + qs + 92); }
     ctx.font = '800 18px "Bricolage Grotesque", sans-serif'; ctx.fillStyle = theme.accent;
-    ctx.fillText('₵' + t.amount + '  ·  ADMIT ' + total, qx + qs / 2, qy + qs + 124);
+    ctx.fillText(total > 1 ? 'ADMITS ' + total + ' PEOPLE' : 'ADMIT ONE', qx + qs / 2, qy + qs + 124);
     ctx.textAlign = 'left';
     ctx.restore();
     // notches (cut-outs)
