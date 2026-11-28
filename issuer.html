@@ -120,6 +120,7 @@ textarea.in{width:100%;min-height:90px;padding:13px;border:1.5px solid var(--lin
       <button class="go" id="fGo">Issue ticket →</button>
       <div class="msg" id="fMsg"></div>
     </div>
+    <div class="card hide" id="teamBox" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 style="font-size:1.25rem;margin:0">Your minor issuers</h2><button class="go" style="width:auto;margin:0;padding:11px 16px;font-size:.92rem" id="addMinor">+ Add minor issuer</button></div><p style="font-size:.85rem;color:var(--muted);font-weight:600;margin-top:6px">Free tickets from your minors come to you first for approval.</p><div id="teamList"></div></div>
     <div class="hist"><h2 style="font-size:1.2rem">Your recent tickets</h2><div id="hist"></div></div>
   </main>
 </section>
@@ -158,6 +159,7 @@ $('hOut').onclick=()=>{sessionStorage.removeItem('pi_email');sessionStorage.remo
 function boot(r){DATA=r;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').innerHTML=esc(r.name)+`<br><span class="lvl">${r.level==='minor'?'MINOR ISSUER':'MAJOR ISSUER'}</span>`;
   $('minorNote').classList.toggle('hide',r.level!=='minor');if(r.level==='minor')$('minorNote').textContent=`Free tickets (₵0) need approval${r.supervisor?' from '+r.supervisor+' first':' from a major issuer'}. Paid tickets go out straight away.`;
   api({action:'staff_login',email:EMAIL,pin:PIN}).then(x=>$('hScan').classList.toggle('hide',!(x&&x.ok)));
+  $('teamBox').classList.toggle('hide',r.level!=='major');if(r.level==='major')loadTeam();
   if(r.level==='major'){renderPending(r.pending||[]);clearInterval(window.__pp);window.__pp=setInterval(pollPending,4000)}
   const keep=+$('fEv').value;$('fEv').innerHTML=r.events.map(e=>`<option value="${e.id}">${esc(e.name)}${e.status==='test'?' (TEST)':''}</option>`).join('');
   if(r.events.some(e=>e.id===keep))$('fEv').value=keep;$('evW').classList.toggle('hide',r.events.length<2);renderTypes();renderStats()}
@@ -240,6 +242,25 @@ async function decide(id,approve,btn,note){btn.disabled=true;btn.textContent=app
   const r=await api({action:'issuer_decide',email:EMAIL,pin:PIN,request_id:id,approve,note:note||''});
   if(!r.ok)alert(r.error||'Could not save.');pollPending()}
 async function pollPending(){if(document.hidden||!DATA||DATA.level!=='major')return;const r=await api({action:'issuer_pending',email:EMAIL,pin:PIN});if(r.ok)renderPending(r.pending||[]);else if(r.relogin)$('hOut').click()}
+
+/* ---------- major: manage own minor issuers ---------- */
+const SITE=location.origin+location.pathname.replace(/[^/]*$/,'');
+function renderTeam(list){$('teamList').innerHTML=list.map(m=>`<div class="hi"><div><b>${esc(m.name)}</b><small>${esc(m.email)}</small><br>${m.active?(m.pin_set?'<span class="tag t-ok">ACTIVE</span>':'<span class="tag t-wait">HASN\'T SIGNED IN YET</span>'):'<span class="tag t-no">PAUSED</span>'} <small>· ${m.issued} issued</small></div><div><button class="ghost" style="margin:0;padding:9px 12px;width:auto;font-size:.82rem" data-tg="${m.id}" data-on="${m.active?0:1}">${m.active?'Pause':'Resume'}</button></div></div>`).join('')||'<p style="color:var(--muted);font-weight:600;padding:10px 0">No minor issuers yet.</p>';
+  $('teamList').querySelectorAll('[data-tg]').forEach(b=>b.onclick=async()=>{b.disabled=true;const r=await api({action:'issuer_minor_toggle',email:EMAIL,pin:PIN,staff_id:+b.dataset.tg,active:b.dataset.on==='1'});if(r.ok)renderTeam(r.minors);else alert(r.error||'Could not update.')})}
+async function loadTeam(){const r=await api({action:'issuer_minors',email:EMAIL,pin:PIN});if(r.ok)renderTeam(r.minors)}
+$('addMinor').onclick=()=>{$('ov').dataset.lock='1';
+  openS(`<h3>Add a minor issuer</h3><p style="font-weight:600;color:var(--muted)">They can issue paid tickets themselves. Free tickets need your approval first (then any major's after 30s).</p>
+    <label>Their name</label><input class="in" id="mName" placeholder="e.g. Kojo (Gate team)"><label>Their email</label><input class="in" id="mEmail" type="email" inputmode="email" placeholder="kojo@email.com">
+    <button class="yes" id="mGo" style="margin-top:16px">Add minor issuer</button><button class="ghost" id="mX">Cancel</button><div class="msg" id="mMsg"></div>`);
+  $('mX').onclick=()=>{delete $('ov').dataset.lock;closeS()};
+  $('mGo').onclick=async()=>{const name=$('mName').value.trim(),em=$('mEmail').value.trim().toLowerCase();$('mMsg').textContent='';
+    if(name.length<2)return $('mMsg').textContent='Enter their name.';if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em))return $('mMsg').textContent='Enter a valid email.';
+    $('mGo').disabled=true;const r=await api({action:'issuer_add_minor',email:EMAIL,pin:PIN,name,new_email:em});$('mGo').disabled=false;
+    if(!r.ok)return $('mMsg').textContent=r.error||'Could not add them.';renderTeam(r.minors);
+    const link=SITE+'issuer.html',msg=`Hi ${name.split(' ')[0]}, you've been added as a Paado ticket issuer.\nOpen ${link}\nSign in with ${em} and create your 6-digit PIN.`;
+    openS(`<h3>Added ✓</h3><p style="font-weight:600">${esc(name)} can now sign in at the issuer page with <b>${esc(em)}</b> and create their own PIN.</p><div class="lk">${esc(link)}</div>
+      <a class="wa" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Send them the link on WhatsApp</a><button class="ghost" id="mCp">Copy message</button><button class="ghost" id="mOk">Done</button>`);
+    $('mCp').onclick=async()=>{try{await navigator.clipboard.writeText(msg);$('mCp').textContent='Copied ✓'}catch(e){}};$('mOk').onclick=()=>{delete $('ov').dataset.lock;closeS()}}};
 
 /* ---------- resume session ---------- */
 if(EMAIL&&PIN){api({action:'issuer_login',email:EMAIL,pin:PIN}).then(r=>{if(r.ok)boot(r);else{sessionStorage.clear();$('lEmail').value=EMAIL}})}
