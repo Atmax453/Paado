@@ -102,6 +102,16 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .evchk input{width:auto}
 @media (max-width:760px){.hin{flex-wrap:wrap}.evsw{order:3;flex:1 1 100%;padding:0}.evsw select{max-width:none;width:100%;padding:8px 34px 8px 14px;font-size:.9rem}.bulk{top:116px}}
 @media (min-width:761px){.staffg{grid-template-columns:320px 1fr;align-items:start}.staffg td:last-child{white-space:normal!important;min-width:150px}.staffg td:last-child .btn{margin:2px 0}}
+
+.segs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 4px}
+.segs button{border:1.5px solid var(--line);background:#fffdf8;border-radius:999px;padding:9px 14px;font-weight:800;font-size:.85rem;cursor:pointer;color:var(--ink)}
+.segs button b{display:inline-block;min-width:22px;margin-left:6px;padding:1px 7px;border-radius:999px;background:#f1e8d6;font-size:.75rem}
+.segs button.on{background:var(--deep);color:var(--cream);border-color:var(--deep)}.segs button.on b{background:var(--sun);color:var(--ink)}
+.shst{font-size:.82rem;line-height:1.35}.shst .help{margin:0}
+.p-new{background:#fff3d6;color:#9a6a00}.p-shared{background:#e3f5ea;color:var(--ok)}.p-dl{background:#e5efff;color:#1f4fa8}
+tr.justnow td{animation:shflash 1.6s ease}
+@keyframes shflash{0%{background:#fff1c9}100%{background:transparent}}
+.shact{display:flex;gap:6px;flex-wrap:wrap}
 /* ================= MOBILE ================= */
 .mbtn{display:none;background:none;border:0;color:var(--cream);font-size:1.6rem;line-height:1;padding:4px 6px;cursor:pointer}
 .bnav{display:none}
@@ -198,7 +208,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
   <header>
     <div class="hin"><div class="logo">PAADO ISLAND<small>ADMIN</small></div><div class="evsw"><select id="evSel" aria-label="Event"></select></div><button class="mbtn" id="mMenu" aria-label="Menu">☰</button><div class="who" id="whoBox"><span id="who"></span><a href="./" target="_blank">View site ↗</a><a href="staff.html" target="_blank">Staff scanner ↗</a><button class="btn sm sun" id="logout">Sign out</button></div></div>
     <nav class="tabs" id="tabs">
-      <button data-t="events">Events</button><button data-t="dash" class="on">Dashboard</button><button data-t="orders">Orders</button><button data-t="issue">Issue ticket</button>
+      <button data-t="events">Events</button><button data-t="dash" class="on">Dashboard</button><button data-t="orders">Orders</button><button data-t="issue">Issue ticket</button><button data-t="share">Share tickets</button>
       <button data-t="types">Ticket types</button><button data-t="staff">Staff</button><button data-t="settings">Event settings</button><button data-t="log">Check-ins</button>
     </nav>
   </header>
@@ -313,6 +323,19 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
     </section>
 
     <!-- LOG -->
+    <!-- SHARE -->
+    <section data-v="share" class="hide">
+      <div class="row"><div><h1>Share tickets</h1><p class="sub">Track which tickets you've sent or downloaded. Unsent tickets stay on top; whatever you just shared drops to the bottom.</p></div><div class="row right"><button class="btn ghost" onclick="loadShare()">↻ Refresh</button></div></div>
+      <div class="card shprog"><div class="row" style="justify-content:space-between;gap:8px"><b id="shHead">—</b><span class="help" id="shSub"></span></div><div class="bprog" style="margin-top:10px"><i id="shBar"></i></div></div>
+      <div class="segs" id="shSeg"></div>
+      <div class="row shf"><div style="flex:2 1 220px"><label>Search</label><input id="shQ" placeholder="Name, phone or ticket code"></div>
+        <div><label>Tickets from</label><select id="shSrc"><option value="manual">Issued by admin</option><option value="online">Bought online</option><option value="all">All</option></select></div>
+        <div><label>Ticket type</label><select id="shType"><option value="">All types</option></select></div></div>
+      <div class="bulk" id="shBulk"><b id="shBulkN">0 selected</b><button class="btn sm sun" type="button" id="shCopy">Copy messages</button><button class="btn sm" style="background:#fff;color:var(--ink)" type="button" id="shMark">Mark shared</button><button class="btn sm ghost" style="border-color:#fff;color:#fff" type="button" id="shUnmark">Mark not shared</button><button class="btn sm ghost" style="border-color:#fff;color:#fff" type="button" id="shClr">Clear</button></div>
+      <div class="tw"><table><thead><tr><th><input type="checkbox" id="shAll" style="width:auto" aria-label="Select all"></th><th>Guest</th><th>Ticket</th><th>Status</th><th>Share</th></tr></thead><tbody id="shList"></tbody></table></div>
+      <p class="help" style="margin-top:10px">“Shared” means you opened WhatsApp with the message, copied the link/message, or downloaded the ticket from this admin. WhatsApp doesn't tell us if the person actually received it — use <b>Mark not shared</b> if a send didn't go through.</p>
+    </section>
+
     <section data-v="log" class="hide">
       <div class="row"><div><h1>Check-ins</h1><p class="sub">Who scanned which tickets, and when.</p></div><div class="row right"><button class="btn ghost sm" id="logCsv">Export CSV</button><button class="btn ghost sm" onclick="loadLog()">Refresh</button></div></div>
       <details class="filters" id="logFilters" open><summary>Filters</summary>
@@ -358,7 +381,7 @@ async function boot(){
   if(!session){$('loginView').classList.remove('hide');$('app').classList.add('hide');return}
   const {data:isAdmin}=await sb.rpc('is_paado_admin');
   if(!isAdmin){$('loginView').classList.remove('hide');msg($('loginMsg'),'This account is not a Paado admin.');await sb.auth.signOut();return}
-  $('who').textContent=session.user.email;$('loginView').classList.add('hide');$('app').classList.remove('hide');
+  $('who').textContent=session.user.email;window.__me=session.user.email;$('loginView').classList.add('hide');$('app').classList.remove('hide');
   await loadEvents();testBar();if(!EV){$('stats').innerHTML='<div class="card">No events found.</div>';return}
   await Promise.all([loadTypes(),loadSettings()]);loadDash();
 }
@@ -376,7 +399,7 @@ sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_IN'&&$('app').classList.contain
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('main section').forEach(s=>s.classList.toggle('hide',s.dataset.v!==b.dataset.t));
-  ({events:renderEvents,dash:loadDash,orders:loadOrders,types:renderTypes,staff:loadStaff,settings:fillSettings,log:loadLog,issue:fillIssue})[b.dataset.t]?.()};
+  ({share:loadShare,events:renderEvents,dash:loadDash,orders:loadOrders,types:renderTypes,staff:loadStaff,settings:fillSettings,log:loadLog,issue:fillIssue})[b.dataset.t]?.()};
 
 /* ---------- dashboard ---------- */
 async function loadDash(){$('dashSub').innerHTML=`<b>${esc(EV.name)}</b> · live numbers for online and admin-issued tickets.`;
@@ -426,8 +449,8 @@ async function ticketImg(r){const ty=TYPES.find(t=>t.slug===r.tier);
   return PaadoTicket.toImg({code:r.code,name:r.name,qty:r.qty,people:r.people,tier_name:r.tier_name||r.tier,amount:Number(r.amount)},{color:ty?.color,event:evOpts()})}
 window.viewTicket=async code=>{const {data:r}=await sb.from('paado_tickets').select('*').eq('code',code).maybeSingle();if(!r)return;
   const url=await ticketImg(r);const link=SITE+'?t='+encodeURIComponent(code);
-  openM(`<img src="${url}"><div class="row" style="margin-top:14px"><button class="btn sun" id="mdl">Download</button><button class="btn ghost" id="mcp">Copy ticket link</button><a class="btn ghost" target="_blank" href="https://wa.me/${esc(waNum(r.phone))}?text=${encodeURIComponent('Your Paado Island Experience ticket: '+link)}">Send on WhatsApp</a><button class="btn" onclick="closeM()">Close</button></div>`);
-  $('mdl').onclick=()=>PaadoTicket.download(url,code);$('mcp').onclick=async()=>{await navigator.clipboard.writeText(link);$('mcp').textContent='Copied'}};
+  openM(`<img src="${url}"><div class="row" style="margin-top:14px"><button class="btn sun" id="mdl">Download</button><button class="btn ghost" id="mcp">Copy ticket link</button><a class="btn ghost" target="_blank" href="https://wa.me/${esc(waNum(r.phone))}?text=${encodeURIComponent(shareMsg(r))}" onclick="markShared('${esc(code)}','whatsapp')">Send on WhatsApp</a><button class="btn" onclick="closeM()">Close</button></div>`);
+  $('mdl').onclick=()=>{PaadoTicket.download(url,code);markShared(code,'download')};$('mcp').onclick=async()=>{await navigator.clipboard.writeText(link);$('mcp').textContent='Copied';markShared(code,'link')}};
 const waNum=p=>String(p||'').replace(/\D/g,'').replace(/^0/,'233');
 const openM=h=>{$('mbox').innerHTML=h;$('modal').classList.add('open')};window.closeM=()=>$('modal').classList.remove('open');
 $('modal').onclick=e=>{if(e.target===$('modal'))closeM()};
@@ -450,8 +473,8 @@ $('issueF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target)
     if(error&&/code/.test(error.message))continue;if(error)return msg($('issueMsg'),error.message);
     msg($('issueMsg'),'Ticket issued: '+code,true);e.target.reset();updAmt();
     const url=await ticketImg(data);const link=SITE+'?t='+code;
-    $('issueOut').innerHTML=`<div class="card"><img src="${url}" style="width:100%;border-radius:12px"><div class="row" style="margin-top:12px"><button class="btn sun" id="idl">Download</button><a class="btn ghost" target="_blank" href="https://wa.me/${esc(waNum(phone))}?text=${encodeURIComponent('Your Paado Island Experience ticket: '+link)}">Send on WhatsApp</a></div><p class="help" style="margin-top:8px">${esc(link)}</p></div>`;
-    $('idl').onclick=()=>PaadoTicket.download(url,code);return}
+    $('issueOut').innerHTML=`<div class="card"><img src="${url}" style="width:100%;border-radius:12px"><div class="row" style="margin-top:12px"><button class="btn sun" id="idl">Download</button><a class="btn ghost" target="_blank" href="https://wa.me/${esc(waNum(phone))}?text=${encodeURIComponent(shareMsg(data))}" onclick="markShared('${esc(code)}','whatsapp')">Send on WhatsApp</a></div><p class="help" style="margin-top:8px">${esc(link)}</p></div>`;
+    $('idl').onclick=()=>{PaadoTicket.download(url,code);markShared(code,'download')};return}
   msg($('issueMsg'),'Could not create a unique code. Try again.')};
 
 
@@ -633,10 +656,11 @@ async function issueBatch(){
     <div class="row" style="margin:12px 0"><button class="btn sun" id="bCsv">Download list (CSV)</button><button class="btn ghost" id="bCopy">Copy all messages</button></div>
     <div class="tw" style="max-height:520px;overflow:auto"><table><thead><tr><th>Name</th><th>Phone</th><th>Ticket</th><th></th></tr></thead><tbody>${done.map(r=>`<tr data-sent="0">
       <td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td class="mono"><a href="#" onclick="viewTicket('${esc(r.code)}');return false">${esc(r.code)}</a></td>
-      <td style="white-space:nowrap"><a class="btn sm sun" target="_blank" href="https://wa.me/${waNum(r.phone)}?text=${encodeURIComponent(msgFor(r))}" onclick="this.textContent='Sent ✓';this.classList.remove('sun');this.classList.add('ghost')">Send</a></td></tr>`).join('')}</tbody></table></div></div>`;
+      <td style="white-space:nowrap"><a class="btn sm sun" target="_blank" href="https://wa.me/${waNum(r.phone)}?text=${encodeURIComponent(msgFor(r))}" onclick="this.textContent='Sent ✓';this.classList.remove('sun');this.classList.add('ghost');markShared('${esc(r.code)}','whatsapp')">Send</a></td></tr>`).join('')}</tbody></table></div></div>`;
   $('bCsv').onclick=()=>{const out=['name,phone,ticket_code,ticket_link'].concat(done.map(r=>[r.name,r.phone,r.code,link(r.code)].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
     const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='paado-batch-tickets.csv';a.click()};
-  $('bCopy').onclick=async()=>{await navigator.clipboard.writeText(done.map(msgFor).join('\n\n'));$('bCopy').textContent='Copied'};
+  $('bCopy').onclick=async()=>{await navigator.clipboard.writeText(done.map(msgFor).join('\n\n'));$('bCopy').textContent='Copied';markShared(done.map(r=>r.code),'message')};
+  $('bResult').querySelector('.card').insertAdjacentHTML('beforeend','<p class="help" style="margin-top:10px">Track who you\'ve sent to in <a href="#" onclick="goTab(\'share\');return false"><b>Share tickets</b></a>.</p>');
   BATCH=[];$('bPreview').innerHTML='';$('bText').value='';
 }
 
@@ -722,6 +746,55 @@ window.resetPin=async(id,n)=>{if(!confirm(`Reset ${n}'s PIN? They'll create a ne
   await sb.from('paado_staff').update({pin_hash:null,pin_set_at:null,failed:0,locked_until:null}).eq('id',id);loadStaff()};
 window.toggleStaff=async(id,on)=>{await sb.from('paado_staff').update({active:on}).eq('id',id);loadStaff()};
 window.delStaff=async(id,n)=>{if(!confirm(`Delete staff ${n}? They won't be able to sign in. Their past scans stay in the log.`))return;await sb.from('paado_staff').delete().eq('id',id);loadStaff()};
+
+/* ---------- share tracking ---------- */
+let SH=[],SHSEG='todo',SHSEL=new Set(),SHJUST=null;
+const tLink=c=>SITE+'?t='+encodeURIComponent(c);
+const shareMsg=r=>`Hi ${r.name}, here is your ${EV?.name||'Paado Island Experience'} ticket 🌴\n${tLink(r.code)}\nShow the QR at the gate. ${[SET.date_label,SET.time_label,SET.venue].filter(Boolean).join(' · ')}`;
+async function markShared(codes,via,undo=false){codes=[].concat(codes).filter(Boolean);if(!codes.length)return;
+  const {error}=await sb.rpc('paado_mark_shared',{p_codes:codes,p_via:via||'manual',p_undo:!!undo});if(error){console.error(error);return}
+  const now=new Date().toISOString(),me=(window.__me||'').toLowerCase();
+  SH.forEach(r=>{if(!codes.includes(r.code))return;
+    if(undo){r.shared_at=r.downloaded_at=r.shared_via=r.shared_by=null;r.share_count=0;return}
+    if(via==='download')r.downloaded_at=now;else{r.shared_at=now;r.shared_via=via}
+    if(via!=='download'||!r.shared_via)r.shared_via=r.shared_via||via;r.shared_by=me||r.shared_by;r.share_count=(r.share_count||0)+1});
+  SHJUST=codes;if(document.querySelector('[data-v="share"]:not(.hide)'))setTimeout(renderShare,150)}
+const lastTouch=r=>Math.max(r.shared_at?+new Date(r.shared_at):0,r.downloaded_at?+new Date(r.downloaded_at):0);
+async function loadShare(){$('shList').innerHTML='<tr><td colspan="5">Loading…</td></tr>';
+  const {data,error}=await sb.from('paado_tickets').select('code,name,phone,tier,tier_name,qty,people,amount,channel,created_at,shared_at,shared_via,shared_by,share_count,downloaded_at').eq('event_id',EV.id).eq('status','paid').order('created_at').limit(10000);
+  if(error){$('shList').innerHTML=`<tr><td colspan="5">${esc(error.message)}</td></tr>`;return}
+  SH=data||[];$('shType').innerHTML='<option value="">All types</option>'+[...new Set(SH.map(r=>r.tier_name||r.tier))].map(n=>`<option>${esc(n)}</option>`).join('');renderShare()}
+function shFiltered(){const q=$('shQ').value.trim().toLowerCase(),src=$('shSrc').value,ty=$('shType').value;
+  return SH.filter(r=>(src==='all'||(src==='manual'?r.channel==='manual':r.channel!=='manual'))&&(!ty||(r.tier_name||r.tier)===ty)&&(!q||(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q.replace(/\D/g,'')||'~')||r.code.toLowerCase().includes(q)))}
+function renderShare(){
+  const base=shFiltered();const isSh=r=>!!r.shared_at,isDl=r=>!!r.downloaded_at,done=r=>isSh(r)||isDl(r);
+  const cnt={todo:base.filter(r=>!done(r)).length,shared:base.filter(isSh).length,dl:base.filter(isDl).length,all:base.length};
+  const tot=base.length,ok=base.filter(done).length;
+  $('shHead').textContent=`${ok} of ${tot} tickets shared or downloaded`;$('shSub').textContent=cnt.todo?`${cnt.todo} still to send`:tot?'All sent ✓':'';$('shBar').style.width=(tot?Math.round(ok/tot*100):0)+'%';
+  $('shSeg').innerHTML=[['todo','To share'],['shared','Shared'],['dl','Downloaded'],['all','All']].map(([k,l])=>`<button data-k="${k}" class="${SHSEG===k?'on':''}">${l}<b>${cnt[k]}</b></button>`).join('');
+  $('shSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{SHSEG=b.dataset.k;SHSEL.clear();renderShare()});
+  let list=SHSEG==='todo'?base.filter(r=>!done(r)):SHSEG==='shared'?base.filter(isSh):SHSEG==='dl'?base.filter(isDl):base;
+  // not-yet-shared first (oldest issued first), then shared/downloaded with the most recent at the very bottom
+  list=list.slice().sort((a,b)=>{const ta=lastTouch(a),tb=lastTouch(b);if(!ta&&!tb)return new Date(a.created_at)-new Date(b.created_at);if(!ta)return -1;if(!tb)return 1;return ta-tb});
+  const via={whatsapp:'WhatsApp',link:'link copied',message:'message copied',manual:'marked shared',download:'downloaded'};
+  const t=x=>x?fmt(x):'';
+  $('shList').innerHTML=list.map(r=>{const st=done(r)?`<div class="shst">${isSh(r)?`<span class="pill p-shared">✓ ${esc(via[r.shared_via]||'shared')}</span> <span class="help">${t(r.shared_at)}</span>`:''}${isDl(r)?`<div style="margin-top:3px"><span class="pill p-dl">⬇ downloaded</span> <span class="help">${t(r.downloaded_at)}</span></div>`:''}<div class="help">${r.share_count>1?`${r.share_count}× · `:''}${esc(r.shared_by||'')}</div></div>`:'<span class="pill p-new">Not shared</span>';
+    return `<tr class="${SHJUST&&SHJUST.includes(r.code)?'justnow':''}"><td><input type="checkbox" data-c="${esc(r.code)}" ${SHSEL.has(r.code)?'checked':''} style="width:auto"></td>
+    <td><b>${esc(r.name)}</b><div class="help">${esc(r.phone||'')}</div></td>
+    <td><a href="#" class="mono" onclick="viewTicket('${esc(r.code)}');return false">${esc(r.code)}</a><div class="help">${esc(r.tier_name||r.tier)}${r.qty*r.people>1?` · admits ${r.qty*r.people}`:''}</div></td>
+    <td>${st}</td>
+    <td><div class="shact"><a class="btn sm ${isSh(r)?'ghost':'sun'}" target="_blank" href="https://wa.me/${waNum(r.phone)}?text=${encodeURIComponent(shareMsg(r))}" onclick="markShared('${esc(r.code)}','whatsapp')">WhatsApp</a><button class="btn sm ghost" onclick="shDownload('${esc(r.code)}')">Download</button><button class="btn sm ghost" onclick="shCopyLink('${esc(r.code)}',this)">Copy link</button>${done(r)?`<button class="btn sm ghost" title="Mark not shared" onclick="markShared('${esc(r.code)}','manual',true)">↺</button>`:''}</div></td></tr>`}).join('')||`<tr><td colspan="5">${SHSEG==='todo'&&tot?'Nothing left to share 🎉':'No tickets here.'}</td></tr>`;
+  SHJUST=null;
+  $('shList').querySelectorAll('[data-c]').forEach(c=>c.onchange=()=>{c.checked?SHSEL.add(c.dataset.c):SHSEL.delete(c.dataset.c);shBulk()});
+  $('shAll').checked=list.length>0&&list.every(r=>SHSEL.has(r.code));$('shAll').onchange=e=>{list.forEach(r=>e.target.checked?SHSEL.add(r.code):SHSEL.delete(r.code));renderShare()};shBulk()}
+function shBulk(){$('shBulk').classList.toggle('on',SHSEL.size>0);$('shBulkN').textContent=SHSEL.size+' selected'}
+['shQ','shSrc','shType'].forEach(id=>$(id).addEventListener(id==='shQ'?'input':'change',()=>{SHSEL.clear();renderShare()}));
+$('shClr').onclick=()=>{SHSEL.clear();renderShare()};
+$('shMark').onclick=async()=>{await markShared([...SHSEL],'manual');SHSEL.clear();renderShare()};
+$('shUnmark').onclick=async()=>{if(!confirm(`Mark ${SHSEL.size} ticket(s) as not shared?`))return;await markShared([...SHSEL],'manual',true);SHSEL.clear();renderShare()};
+$('shCopy').onclick=async()=>{const rows=SH.filter(r=>SHSEL.has(r.code));await navigator.clipboard.writeText(rows.map(shareMsg).join('\n\n'));await markShared(rows.map(r=>r.code),'message');$('shCopy').textContent='Copied ✓';setTimeout(()=>$('shCopy').textContent='Copy messages',1500);SHSEL.clear();renderShare()};
+window.shDownload=async code=>{const {data:r}=await sb.from('paado_tickets').select('*').eq('code',code).maybeSingle();if(!r)return;const url=await ticketImg(r);PaadoTicket.download(url,code);markShared(code,'download')};
+window.shCopyLink=async(code,btn)=>{await navigator.clipboard.writeText(tLink(code));btn.textContent='Copied';markShared(code,'link')};
 
 /* ---------- reset ---------- */
 window.resetEvents=async(ids,lead)=>{ids=ids.filter(Boolean);if(!ids.length)return;
@@ -853,9 +926,10 @@ new MutationObserver(()=>{clearTimeout(window.__lt);window.__lt=setTimeout(label
 $('mMenu').onclick=e=>{e.stopPropagation();$('whoBox').classList.toggle('open')};
 document.addEventListener('click',e=>{if(!e.target.closest('#whoBox'))$('whoBox').classList.remove('open')});
 function goTab(t){const b=document.querySelector(`#tabs button[data-t="${t}"]`);if(b)b.click();
-  document.querySelectorAll('#bnav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t||(x.dataset.t==='more'&&['events','types','staff','settings'].includes(t))));scrollTo(0,0)}
+  document.querySelectorAll('#bnav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t||(x.dataset.t==='more'&&['share','events','types','staff','settings'].includes(t))));scrollTo(0,0)}
 $('bnav').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.t==='more'){openM(`<h2 style="margin-top:0">More</h2><div style="display:grid;gap:10px">
+    <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('share')">📤&nbsp; Share tickets</button>
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('events')">📅&nbsp; Events</button>
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('types')">🎟️&nbsp; Ticket types</button>
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('staff')">👥&nbsp; Staff</button>
