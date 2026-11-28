@@ -697,15 +697,20 @@ window.editType=id=>{const t=TYPES.find(x=>x.id===id)||{name:'',slug:'',price:1,
   <label>What's included (one per line)</label><textarea name="includes">${esc((t.includes||[]).join('\n'))}</textarea>
   <div class="row"><div><label>Badge (optional)</label><input name="badge" value="${esc(t.badge||'')}" placeholder="BEST VALUE"></div><div><label>Ticket colour</label><select name="color">${['sand','sky','lagoon','sunset'].map(c=>`<option ${c===t.color?'selected':''}>${c}</option>`).join('')}</select></div></div>
   <label class="chk"><input type="checkbox" name="active" ${t.active?'checked':''}> On sale</label>
-  <label class="chk"><input type="checkbox" name="hidden" ${t.hidden?'checked':''}> Hidden from website (only buyable with its test link)</label>
-  <label class="chk"><input type="checkbox" name="complimentary" ${t.complimentary?'checked':''}> Complimentary (free, never on the website, admin issues only)</label>
+  <label class="chk"><input type="checkbox" name="hidden" ${t.hidden?'checked':''}> Hidden from website (sell it with one-time links, issuers or its test link)</label>
+  <label class="chk"><input type="checkbox" name="complimentary" ${t.complimentary?'checked':''}> Complimentary (free, never on the website)</label><p class="help" id="tyHint" style="margin:4px 0 0"></p>
   <div class="row right" style="margin-top:18px"><div class="msg" id="tyMsg"></div>${id?`<button type="button" class="btn bad sm" id="tyDel">Delete</button>`:''}<button type="button" class="btn ghost" onclick="closeM()">Cancel</button><button class="btn sun">Save</button></div></form>`);
+  {const F=$('tyF'),pr=F.price,cp=F.complimentary,hd=F.hidden;
+   const sync=()=>{$('tyHint').textContent=cp.checked?'Free ticket: the price is fixed at ₵0. Untick Complimentary to charge a price (tick Hidden to keep it off the website).':''};
+   pr.addEventListener('input',()=>{if(+pr.value>0&&cp.checked){cp.checked=false;hd.checked=true;$('tyHint').textContent='Complimentary was unticked because you set a price. Hidden is ticked so it stays off the website; share it with one-time links or issuers.'}});
+   cp.addEventListener('change',()=>{if(cp.checked){pr.value=0;hd.checked=true}else if(!(+pr.value>0))pr.focus();sync()});sync()}
   $('tyF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);
     const row={name:f.get('name').trim(),slug:f.get('slug').trim().toLowerCase(),price:+f.get('price'),people:+f.get('people')||1,sort:+f.get('sort')||0,
       includes:String(f.get('includes')).split('\n').map(s=>s.trim()).filter(Boolean),badge:f.get('badge').trim()||null,color:f.get('color'),active:!!f.get('active'),hidden:!!f.get('hidden')||!!f.get('complimentary'),complimentary:!!f.get('complimentary')};
     if(row.complimentary)row.price=0; else if(!(row.price>=1))return msg($('tyMsg'),'Paid tickets must cost at least ₵1. Tick Complimentary for free tickets.');
-    const {error}=id?await sb.from('paado_ticket_types').update(row).eq('id',id):await sb.from('paado_ticket_types').insert({...row,event_id:EV.id});
-    if(error)return msg($('tyMsg'),error.message);closeM();await loadTypes();renderTypes()};
+    const {data:saved,error}=id?await sb.from('paado_ticket_types').update(row).eq('id',id).select('id'):await sb.from('paado_ticket_types').insert({...row,event_id:EV.id}).select('id');
+    if(error)return msg($('tyMsg'),/duplicate|unique/.test(error.message)?'That link name is already used in this event.':error.message);
+    if(!saved||!saved.length)return msg($('tyMsg'),'Not saved: your admin session may have expired. Sign out and sign in again.');closeM();await loadTypes();renderTypes()};
   if(id)$('tyDel').onclick=async()=>{const {count}=await sb.from('paado_tickets').select('id',{count:'exact',head:true}).eq('tier',t.slug).eq('event_id',EV.id).eq('status','paid');
     if(count){alert(`${count} paid ticket(s) use this type. Untick "On sale" instead of deleting.`);return}
     if(!confirm(`Delete the ${t.name} ticket type?`))return;const {error}=await sb.from('paado_ticket_types').delete().eq('id',id);if(error)return msg($('tyMsg'),error.message);closeM();await loadTypes();renderTypes()}};
