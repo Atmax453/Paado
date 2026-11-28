@@ -400,7 +400,7 @@ let TYPES=[
   {slug:'single',name:'Single',price:100,people:1,includes:['Transportation','Canoe ride','Cup for drinks','All free games','Music performance','DJ sessions'],color:'sand'},
   {slug:'double',name:'Double',price:180,people:2,badge:'BEST VALUE',includes:['Transportation ×2','Canoe ride ×2','Cup for drinks ×2','All free games ×2','Music performance ×2','DJ sessions ×2'],color:'sky'}];
 let OPEN=true;
-const q=new URLSearchParams(location.search);const EVQ=(q.get('e')||'').toLowerCase().replace(/[^a-z0-9-]/g,'');
+const q=new URLSearchParams(location.search);const INV=(q.get('i')||'').replace(/[^A-Za-z0-9]/g,'');let INVITE=null;const EVQ=(q.get('e')||'').toLowerCase().replace(/[^a-z0-9-]/g,'');
 function evOpts(){const d=new Date(S.event_date);const day=isNaN(d)?'':d.getUTCDate();const suf=[,'ST','ND','RD'][day%100>10&&day%100<14?0:day%10]||'TH';
   return {edition:S.edition,time:S.time_label,date:isNaN(d)?S.date_label:day+suf+' '+d.toLocaleString('en',{month:'short',timeZone:'UTC'}).toUpperCase(),venue:S.venue,url:SITE}}
 
@@ -492,8 +492,8 @@ function guessNet(p){p=String(p).replace(/\D/g,'').replace(/^233/,'0');const k=p
 let qty=1,tier='single',pollT=null;
 const T=slug=>TYPES.find(t=>t.slug===slug);
 function payForm(t){
-  if(!OPEN){openM(`<h3>Sales closed</h3><p class="sub">Online ticket sales are closed. Call ${esc((S.phones||[])[0]||'')} for help.</p>`);return}
-  qty=1;const avail=TYPES.filter(x=>!x.hidden||x.slug===t);tier=T(t)?t:(avail[0]||{}).slug;
+  if(!OPEN&&!INVITE){openM(`<h3>Sales closed</h3><p class="sub">Online ticket sales are closed. Call ${esc((S.phones||[])[0]||'')} for help.</p>`);return}
+  qty=1;const avail=INVITE?TYPES.filter(x=>x.slug===INVITE.type):TYPES.filter(x=>!x.hidden||x.slug===t);tier=T(t)?t:(avail[0]||{}).slug;
   openM(`<h3>Purchase ticket</h3><p class="sub">Paado Island Experience · ${esc(S.date_label)} · ${esc(S.time_label)} · ${esc(S.venue)}</p>
   <form id="payF">
     <div class="tierpick">${avail.map(x=>`<label><input type="radio" name="tier" value="${esc(x.slug)}" ${x.slug===tier?'checked':''}><div>${esc(x.name)}<small>${x.people} ${x.people>1?'people':'person'} · ₵${esc(x.price)}</small></div></label>`).join('')}</div>
@@ -501,7 +501,7 @@ function payForm(t){
     <label>MOMO NUMBER</label><input name="phone" id="pPhone" required inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX">
     <label>NETWORK</label>
     <div class="nets"><label><input type="radio" name="net" value="mtn"><div>MTN</div></label><label><input type="radio" name="net" value="vod"><div>Telecel</div></label><label><input type="radio" name="net" value="atl"><div>AirtelTigo</div></label></div>
-    <div class="qty"><span style="font-weight:800">How many</span><div class="ctl"><button type="button" id="qm">−</button><b id="qn">1</b><button type="button" id="qp">+</button></div></div>
+    <div class="qty" ${INVITE?'style="display:none"':''}><span style="font-weight:800">How many</span><div class="ctl"><button type="button" id="qm">−</button><b id="qn">1</b><button type="button" id="qp">+</button></div></div>
     <div class="total"><span>Total</span><b id="qt"></b></div>
     <button class="btn btn-sun" id="payGo" type="submit">Pay with MoMo →</button>
     <div class="err" id="perr"></div>
@@ -515,7 +515,7 @@ function payForm(t){
   const card=async()=>{const f=new FormData($('payF'));$('perr').textContent='';
     if(!f.get('name')||!f.get('phone')){$('perr').textContent='Enter your name and phone number first.';return}
     $('payCard').textContent='Opening card payment…';
-    const r=await api({action:'init',event:EVQ,tier,name:f.get('name'),phone:f.get('phone'),qty,return_url:SITE});
+    const r=await api({action:'init',event:EVQ,invite:INVITE?INV:undefined,tier,name:f.get('name'),phone:f.get('phone'),qty,return_url:SITE});
     if(r.ok&&r.url){location.href=r.url;return}
     $('perr').textContent=r.error||'Could not start payment.';$('payCard').textContent='Pay with card instead'};
   $('payCard').onclick=card;
@@ -523,7 +523,7 @@ function payForm(t){
     e.preventDefault();const f=new FormData(e.target),b=$('payGo');
     if(!f.get('net')){$('perr').textContent='Pick your network.';return}
     b.disabled=true;b.textContent='Sending prompt to your phone…';$('perr').textContent='';
-    const r=await api({action:'momo',event:EVQ,tier,name:f.get('name'),phone:f.get('phone'),provider:f.get('net'),qty});
+    const r=await api({action:'momo',event:EVQ,invite:INVITE?INV:undefined,tier,name:f.get('name'),phone:f.get('phone'),provider:f.get('net'),qty});
     if(r.ok&&r.status==='success'&&r.ticket){showTicket(r.ticket);return}
     if(r.ok&&r.reference){momoWait(r.reference,r.status,r.display_text,f.get('phone'));return}
     if(r.fallback){$('perr').textContent='MoMo prompt unavailable right now. Opening Paystack instead…';await card();return}
@@ -557,7 +557,7 @@ function myCodes(){try{return JSON.parse(localStorage.getItem('paado_tix')||'[]'
 function refreshMy(){$('myTix').style.display=myCodes().length?'inline':'none'}
 $('myTix').onclick=()=>{const a=myCodes();if(a.length===1)return openTicket(a[0].code);
   openM(`<h3>My tickets</h3><div class="tklist">${a.map(x=>`<button onclick="openTicket('${esc(x.code)}')"><span>${esc(x.code)}</span><small>${esc(x.tier||'')} · ${esc(x.name||'')}</small></button>`).join('')}</div>`)};
-async function showTicket(t){
+async function showTicket(t){if(INV&&typeof dropInv==='function'){INVITE=null;dropInv()}
   saveCode(t);
   const color=(T(t.tier)||{}).color||(t.people>1?'sky':'sand');
   openM(`<h3>You're in! 🌴</h3><p class="sub">Show this QR at the gate. Save the image to your phone.</p><div class="spinner" id="tkSpin"></div>`,true);
@@ -597,12 +597,33 @@ async function checkReturn(){
 
 function testMode(){if(document.getElementById('testRib'))return;const d=document.createElement('div');d.id='testRib';d.textContent='🧪 TEST MODE · tickets and payments here are for testing';
   d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:999;background:repeating-linear-gradient(135deg,#ffd75e 0 14px,#ffcb3a 14px 28px);color:#3a2600;font:800 12px/1.2 system-ui,sans-serif;letter-spacing:.06em;text-align:center;padding:7px 10px;text-transform:uppercase';document.body.appendChild(d)}
+/* ---------- invite links (?i=TOKEN) ---------- */
+function dropInv(){try{const u=new URL(location.href);u.searchParams.delete('i');history.replaceState(null,'',u.pathname+u.search+u.hash)}catch(e){}}
+function inviteDead(reason){INVITE=null;dropInv();
+  const why={used:'This ticket link has already been used.',expired:'This ticket link has expired.',revoked:'This ticket link has been switched off.',closed:'Ticket sales for this event are closed.'}[reason]||'This ticket link is not valid.';
+  openM(`<h3>Link no longer valid</h3><p class="sub">${esc(why)} Each special ticket link works for one person only.</p><button class="btn btn-sun" onclick="closeM();document.getElementById('tickets').scrollIntoView({behavior:'smooth'})">See available tickets →</button>`)}
+function inviteStart(inv){
+  if(!inv||!inv.valid)return inviteDead(inv&&inv.reason);
+  INVITE=inv;const t=T(inv.type)||TYPES[0];
+  if(!inv.free)return payForm(inv.type);
+  openM(`<h3>Claim your ticket 🎟️</h3><p class="sub">You've been invited to ${esc(S.edition?'Paado Island Experience · '+S.edition:'Paado Island Experience')} · ${esc(S.date_label||'')} · ${esc(S.venue||'')}</p>
+  <div class="tierpick"><label><input type="radio" checked disabled><div>${esc(t?t.name:'Ticket')}<small>${t&&t.people>1?t.people+' people':'1 person'} · Free</small></div></label></div>
+  <form id="clF"><label>FULL NAME</label><input name="name" required autocomplete="name" placeholder="e.g. Ama Mensah">
+  <label>WHATSAPP / PHONE NUMBER</label><input name="phone" required inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX">
+  <button class="btn btn-sun" id="clGo" type="submit">Get my ticket →</button><div class="err" id="clErr"></div>
+  <p class="fine">This link works once. After you claim, it can't be used by anyone else.</p></form>`);
+  $('clF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),b=$('clGo');b.disabled=true;b.textContent='Getting your ticket…';$('clErr').textContent='';
+    const r=await api({action:'claim',invite:INV,name:f.get('name'),phone:f.get('phone')});
+    if(r.ok&&r.ticket){INVITE=null;dropInv();if(r.event&&r.event.settings)S=Object.assign({},S,r.event.settings);return showTicket(r.ticket)}
+    if(r.invite_dead){return inviteDead('used')}
+    $('clErr').textContent=r.error||'Could not get your ticket. Try again.';b.disabled=false;b.textContent='Get my ticket →'}}
 /* ---------- boot ---------- */
 render();refreshMy();
-api({action:'info',event:EVQ,type:q.get('buy')||''}).then(async r=>{
+api(INV?{action:'info',invite:INV}:{action:'info',event:EVQ,type:q.get('buy')||''}).then(async r=>{
   if(r&&r.ok){window.__evSlug=r.event&&r.event.slug;if(r.event&&r.event.status==='test')testMode();S=Object.assign(S,r.settings||{});if(r.types&&r.types.length)TYPES=r.types.map(t=>({...t,price:Number(t.price)}));OPEN=r.open!==false;render();tick()}
   if(await checkReturn())return;
   if(q.get('t'))return openTicket(q.get('t'));
+  if(INV)return inviteStart(r&&r.invite);
   if(q.get('buy'))payForm(q.get('buy'));
 });
 const io=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}}),{threshold:.12});

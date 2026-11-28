@@ -671,10 +671,10 @@ function renderTypes(){$('types').innerHTML=TYPES.map(t=>`<div class="type">
   <div style="margin:6px 0 10px"><span class="tag">${t.people} ${t.people>1?'people':'person'}</span>${t.complimentary?'<span class="tag comp">COMPLIMENTARY · ADMIN ONLY</span>':''}${t.badge?`<span class="tag">${esc(t.badge)}</span>`:''}<span class="tag">${esc(t.color)}</span></div>
   <div class="help">${(t.includes||[]).map(esc).join(' · ')||'No inclusions listed'}</div>
   <div class="row" style="margin-top:12px;gap:8px">
-    ${t.complimentary?'<span class="help">Never shown on the site. Issue these from “Issue ticket”.</span>':`<span class="sw ${!t.hidden&&t.active?'on':''}" onclick="flipType(${t.id},'show')"><i></i>${!t.hidden&&t.active?'Shown on website':'Hidden from website'}</span>`}
+    ${t.complimentary?'<span class="help">Never shown on the site. Issue from “Issue ticket” or send one-time links with 🔗 Share link.</span>':`<span class="sw ${!t.hidden&&t.active?'on':''}" onclick="flipType(${t.id},'show')"><i></i>${!t.hidden&&t.active?'Shown on website':'Hidden from website'}</span>`}
     <span class="sw ${t.active?'on':''}" onclick="flipType(${t.id},'active')"><i></i>${t.active?'Can be issued / sold':'Turned off'}</span>
   </div>
-  <div class="row" style="margin-top:12px"><button class="btn sm" onclick="editType(${t.id})">Edit</button>${t.active&&!t.complimentary?`<a class="btn sm ghost" target="_blank" href="${SITE}?buy=${esc(t.slug)}">${t.hidden?'Test buy link':'Buy link'}</a>`:''}</div></div>`).join('')}
+  <div class="row" style="margin-top:12px"><button class="btn sm" onclick="editType(${t.id})">Edit</button>${t.active?`<button class="btn sm sun" onclick="shareType(${t.id})">🔗 Share link</button>`:''}</div></div>`).join('')}
 window.flipType=async(id,what)=>{const t=TYPES.find(x=>x.id===id);if(!t)return;
   const patch=what==='show'?(t.hidden||!t.active?{hidden:false,active:true}:{hidden:true}):{active:!t.active};
   const {error}=await sb.from('paado_ticket_types').update(patch).eq('id',id);if(error)return alert(error.message);await loadTypes();renderTypes()};
@@ -795,6 +795,45 @@ $('shUnmark').onclick=async()=>{if(!confirm(`Mark ${SHSEL.size} ticket(s) as not
 $('shCopy').onclick=async()=>{const rows=SH.filter(r=>SHSEL.has(r.code));await navigator.clipboard.writeText(rows.map(shareMsg).join('\n\n'));await markShared(rows.map(r=>r.code),'message');$('shCopy').textContent='Copied ✓';setTimeout(()=>$('shCopy').textContent='Copy messages',1500);SHSEL.clear();renderShare()};
 window.shDownload=async code=>{const {data:r}=await sb.from('paado_tickets').select('*').eq('code',code).maybeSingle();if(!r)return;const url=await ticketImg(r);PaadoTicket.download(url,code);markShared(code,'download')};
 window.shCopyLink=async(code,btn)=>{await navigator.clipboard.writeText(tLink(code));btn.textContent='Copied';markShared(code,'link')};
+
+/* ---------- share links for ticket types (public link, or one-time invite links) ---------- */
+const newToken=()=>{const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';const r=crypto.getRandomValues(new Uint8Array(12));return [...r].map(b=>a[b%a.length]).join('')};
+const invLink=tk=>SITE+'?i='+tk;
+const pubLink=t=>SITE+'?buy='+encodeURIComponent(t.slug)+(EV&&!EV.is_default?'&e='+encodeURIComponent(EV.slug):'');
+const invMsg=(t,l)=>`Hi! Here's your personal ${t.name} ticket link for ${EV.name} 🌴\n${l}\nIt works once: fill in your name and number to ${t.complimentary||!(Number(t.price)>0)?'get your free ticket':'buy your ticket'}.`;
+window.shareType=async id=>{const t=TYPES.find(x=>x.id===id);if(!t)return;
+  const free=t.complimentary||!(Number(t.price)>0),isPublic=!t.hidden&&!t.complimentary;
+  openM(`<h2 style="margin-top:0">Share “${esc(t.name)}”</h2>
+  ${isPublic?`<div class="card" style="background:#fffaf0"><b>Public link</b><p class="help" style="margin:4px 0 8px">Anyone with this link can buy ${esc(t.name)} tickets. It can be shared freely.</p>
+    <input readonly value="${esc(pubLink(t))}" onclick="this.select()"><div class="row" style="margin-top:8px;gap:8px"><button class="btn sm sun" onclick="navigator.clipboard.writeText('${esc(pubLink(t))}');this.textContent='Copied ✓'">Copy link</button><a class="btn sm ghost" target="_blank" href="https://wa.me/?text=${encodeURIComponent(`Get your ${t.name} ticket for ${EV.name}: ${pubLink(t)}`)}">Share on WhatsApp</a></div></div>`
+  :`${!free?`<p class="help" style="margin-bottom:6px">Reusable test link (anyone who has it can buy): <a href="${esc(pubLink(t))}" target="_blank">${esc(pubLink(t))}</a></p>`:''}<p class="help">${free?'Free tickets':'Hidden tickets'} should be shared with <b>one-time links</b>: each link works for one person. Once it's used it stops working and opens the website instead, so it can't be passed around.</p>`}
+  <div class="card" style="margin-top:12px"><b>${isPublic?'Or create one-time links':'Create one-time links'}</b>
+    <div class="row" style="margin-top:6px">
+      <div><label>How many links</label><input type="number" id="ivN" min="1" max="200" value="1"></div>
+      <div><label>Uses per link</label><input type="number" id="ivU" min="1" max="1000" value="1"></div>
+      <div><label>Expires</label><select id="ivX"><option value="">Never</option><option value="24">In 24 hours</option><option value="72">In 3 days</option><option value="168">In 7 days</option></select></div>
+    </div>
+    <label>Label (optional, to track who you gave it to)</label><input id="ivL" placeholder="e.g. Media · Sponsors · Kofi's guests">
+    <div class="row right" style="margin-top:12px"><div class="msg" id="ivMsg"></div><button class="btn sun" id="ivGo">Create link(s)</button></div>
+    <div id="ivNew"></div></div>
+  <div style="margin-top:14px"><div class="row" style="justify-content:space-between"><b>Links for ${esc(t.name)}</b><span class="help" id="ivCount"></span></div><div class="tw" style="max-height:300px;overflow:auto;margin-top:6px"><table><thead><tr><th>Link</th><th>Label</th><th>Used</th><th>Status</th><th></th></tr></thead><tbody id="ivList"><tr><td colspan="5">Loading…</td></tr></tbody></table></div></div>
+  <div class="row right" style="margin-top:14px"><button class="btn ghost" onclick="closeM()">Close</button></div>`);
+  const loadInv=async()=>{const {data}=await sb.from('paado_invites').select('*').eq('type_id',t.id).order('created_at',{ascending:false}).limit(300);const L=data||[];
+    const st=v=>v.revoked?['Switched off','p-failed']:v.uses>=v.max_uses?[v.max_uses>1?'Used up':'Used','p-paid']:v.expires_at&&new Date(v.expires_at)<new Date()?['Expired','p-failed']:['Unused','p-pending'];
+    $('ivCount').textContent=L.length?`${L.filter(v=>v.uses>=v.max_uses).length} used · ${L.filter(v=>!v.revoked&&v.uses<v.max_uses&&!(v.expires_at&&new Date(v.expires_at)<new Date())).length} open`:'';
+    $('ivList').innerHTML=L.map(v=>{const [s,c]=st(v);const open=c==='p-pending';return `<tr><td class="mono" style="font-size:.8rem">…?i=${esc(v.token)}</td><td>${esc(v.label||'')}</td><td>${v.uses}/${v.max_uses}${v.last_used_name?`<div class="help">${esc(v.last_used_name)} · ${fmt(v.last_used_at)}</div>`:''}</td><td><span class="pill ${c}">${s}</span></td>
+      <td style="white-space:nowrap">${open?`<button class="btn sm ghost" onclick="navigator.clipboard.writeText('${invLink(v.token)}');this.textContent='Copied'">Copy</button> <a class="btn sm ghost" target="_blank" href="https://wa.me/?text=${encodeURIComponent(invMsg(t,invLink(v.token)))}">WhatsApp</a> <button class="btn sm ghost" style="color:var(--bad)" data-rv="${v.id}">Switch off</button>`:''}</td></tr>`}).join('')||'<tr><td colspan="5">No links yet.</td></tr>';
+    $('ivList').querySelectorAll('[data-rv]').forEach(b=>b.onclick=async()=>{if(!confirm('Switch off this link? Anyone who opens it will be sent to the website.'))return;await sb.from('paado_invites').update({revoked:true}).eq('id',+b.dataset.rv);loadInv()})};
+  loadInv();
+  $('ivGo').onclick=async()=>{const n=Math.max(1,Math.min(200,+$('ivN').value||1)),u=Math.max(1,Math.min(1000,+$('ivU').value||1)),h=+$('ivX').value||0;
+    const rows=Array.from({length:n},()=>({token:newToken(),event_id:EV.id,type_id:t.id,max_uses:u,expires_at:h?new Date(Date.now()+h*36e5).toISOString():null,label:$('ivL').value.trim()||null,created_by:window.__me||null}));
+    $('ivGo').disabled=true;const {error}=await sb.from('paado_invites').insert(rows);$('ivGo').disabled=false;if(error)return msg($('ivMsg'),error.message);
+    const links=rows.map(r=>invLink(r.token));
+    $('ivNew').innerHTML=`<div style="margin-top:12px;padding:12px;border-radius:12px;background:#e3f5ea"><b>${n} link${n>1?'s':''} ready ✓</b>${n===1?`<input readonly value="${esc(links[0])}" onclick="this.select()" style="margin-top:8px"><div class="row" style="margin-top:8px;gap:8px"><button class="btn sm sun" id="ivC1">Copy link</button><a class="btn sm ghost" target="_blank" href="https://wa.me/?text=${encodeURIComponent(invMsg(t,links[0]))}">Share on WhatsApp</a></div>`:`<div class="row" style="margin-top:8px;gap:8px"><button class="btn sm sun" id="ivCA">Copy all links</button><button class="btn sm ghost" id="ivCsv">Download CSV</button></div>`}</div>`;
+    if($('ivC1'))$('ivC1').onclick=()=>{navigator.clipboard.writeText(links[0]);$('ivC1').textContent='Copied ✓'};
+    if($('ivCA'))$('ivCA').onclick=()=>{navigator.clipboard.writeText(links.join('\n'));$('ivCA').textContent='Copied ✓'};
+    if($('ivCsv'))$('ivCsv').onclick=()=>{const out=['label,link'].concat(links.map(l=>`"${(rows[0].label||'').replace(/"/g,'""')}",${l}`)).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download=`paado-${t.slug}-links.csv`;a.click()};
+    loadInv()}};
 
 /* ---------- reset ---------- */
 window.resetEvents=async(ids,lead)=>{ids=ids.filter(Boolean);if(!ids.length)return;
