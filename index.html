@@ -568,7 +568,7 @@ async function showTicket(t){if(INV&&typeof dropInv==='function'){INVITE=null;dr
     <p class="fine">${t.total>1?`Admits ${t.total} people. `:''}${esc(S.transport)}</p>`;
   $('dl').onclick=()=>PaadoTicket.download(url,t.code);
   const link=SITE+'?t='+encodeURIComponent(t.code);
-  $('shareBtn').onclick=async()=>{try{if(navigator.share){await navigator.share({title:'My Paado Island ticket',url:link});return}await navigator.clipboard.writeText(link);$('shareBtn').textContent='Link copied'}catch(e){}};
+  $('shareBtn').onclick=async()=>{const txt=`My Paado Island Experience ticket 🌴\n${link}${S.group_link?`\nJoin the attendees' WhatsApp group: ${S.group_link}`:''}`;try{if(navigator.share){await navigator.share({title:'My Paado Island ticket',text:txt});return}await navigator.clipboard.writeText(txt);$('shareBtn').textContent='Copied'}catch(e){}};
 }
 window.openTicket=async code=>{openM(`<h3>Loading ticket…</h3><div class="spinner"></div>`);
   const r=await api({action:'ticket',code});
