@@ -382,6 +382,7 @@ const SITE=location.origin+location.pathname.replace(/[^/]*$/,'');
 const sb=supabase.createClient(SB_URL,ANON);
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const priceCell=r=>Number(r.amount)>0?money(r.amount):Number(r.cash_received)>0?`${money(r.cash_received)} <span class="help" style="display:inline">cash · issuer</span>`:'<span class="pill p-paid">FREE</span>';
 const money=n=>'₵'+Number(n||0).toLocaleString('en',{maximumFractionDigits:2});
 const fmt=d=>d?new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'';
 const msg=(el,t,ok)=>{el.textContent=t;el.className='msg '+(ok?'ok':'bad')};
@@ -415,7 +416,7 @@ $('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
 
 /* ---------- dashboard ---------- */
 async function loadDash(){$('dashSub').innerHTML=`<b>${esc(EV.name)}</b> · live numbers for online and admin-issued tickets.`;
-  const {data:rows,error}=await sb.from('paado_tickets').select('code,name,qty,people,amount,status,tier,tier_name,checked_in,paid_at,created_at,channel').eq('event_id',EV.id).order('created_at',{ascending:false}).limit(5000);
+  const {data:rows,error}=await sb.from('paado_tickets').select('code,name,qty,people,amount,status,tier,tier_name,checked_in,paid_at,created_at,channel,cash_received,issued_by').eq('event_id',EV.id).order('created_at',{ascending:false}).limit(5000);
   if(error){$('stats').innerHTML=`<div class="card">${esc(error.message)}</div>`;return}
   const paid=rows.filter(r=>r.status==='paid');
   const ppl=paid.reduce((a,r)=>a+r.qty*r.people,0),inn=paid.reduce((a,r)=>a+r.checked_in,0),rev=paid.reduce((a,r)=>a+Number(r.amount),0);
@@ -424,7 +425,7 @@ async function loadDash(){$('dashSub').innerHTML=`<b>${esc(EV.name)}</b> · live
     .map(([c,v,l])=>`<div class="card stat ${c}"><b>${esc(v)}</b><span>${l}</span></div>`).join('');
   const by={};paid.forEach(r=>{const k=r.tier_name||r.tier;by[k]=by[k]||{n:0,q:0,rev:0,inn:0,ppl:0};by[k].n++;by[k].q+=r.qty;by[k].rev+=Number(r.amount);by[k].inn+=r.checked_in;by[k].ppl+=r.qty*r.people});
   $('byType').innerHTML=Object.entries(by).map(([k,v])=>`<div class="card stat"><span>${esc(k)}</span><b>${v.q}</b><span>${money(v.rev)} · ${v.inn}/${v.ppl} in</span><div class="bar"><i style="width:${v.ppl?Math.round(v.inn/v.ppl*100):0}%"></i></div></div>`).join('')||'<p class="sub">No sales yet.</p>';
-  $('latest').innerHTML=paid.slice(0,10).map(r=>`<tr><td class="mono"><a href="#" onclick="viewTicket('${esc(r.code)}');return false">${esc(r.code)}</a></td><td>${esc(r.name)}</td><td>${r.qty} × ${esc(r.tier_name||r.tier)}</td><td>${money(r.amount)}</td><td>${fmt(r.paid_at||r.created_at)}</td></tr>`).join('')||'<tr><td colspan="5">No paid orders yet.</td></tr>';
+  $('latest').innerHTML=paid.slice(0,10).map(r=>`<tr><td class="mono"><a href="#" onclick="viewTicket('${esc(r.code)}');return false">${esc(r.code)}</a></td><td>${esc(r.name)}</td><td>${r.qty} × ${esc(r.tier_name||r.tier)}</td><td>${priceCell(r)}</td><td>${fmt(r.paid_at||r.created_at)}</td></tr>`).join('')||'<tr><td colspan="5">No paid orders yet.</td></tr>';
 }
 
 /* ---------- orders ---------- */
@@ -441,7 +442,7 @@ function renderOrders(){
   $('orders').innerHTML=list.map(r=>`<tr>
     <td class="mono">${r.code?`<a href="#" onclick="viewTicket('${esc(r.code)}');return false">${esc(r.code)}</a>`:'<span class="help">—</span>'}</td>
     <td>${esc(r.name)}${r.note?`<div class="help">${esc(r.note)}</div>`:''}</td><td>${esc(r.phone)}</td>
-    <td>${r.qty} × ${esc(r.tier_name||r.tier)}</td><td>${money(r.amount)}<div class="help">${esc(r.channel||'')}</div></td>
+    <td>${r.qty} × ${esc(r.tier_name||r.tier)}</td><td>${priceCell(r)}<div class="help">${esc(r.channel==='issuer'&&r.issued_by?'issuer · '+r.issued_by:r.channel||'')}</div></td>
     <td><span class="pill p-${esc(r.status)}">${esc(r.status)}</span></td><td>${r.checked_in}/${r.qty*r.people}</td><td>${fmt(r.created_at)}</td>
     <td style="white-space:nowrap">${r.status==='paid'&&r.checked_in?`<button class="btn sm ghost" onclick="resetIn(${r.id})">Reset check-in</button> `:''}<button class="btn sm ghost" onclick="delOrder(${r.id},'${esc(r.code||r.reference)}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="9">No orders.</td></tr>';
 }
