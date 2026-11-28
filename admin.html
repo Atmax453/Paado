@@ -248,10 +248,10 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 
       <h2 id="batchH">Batch issue (many people at once)</h2>
       <div class="card" id="batchCard">
-        <p class="help" style="margin:0 0 10px">Paste your list straight from Google Forms / Google Sheets / Excel / WhatsApp. One person per line, with a name and a phone number in any order, e.g. <b>Ama Mensah, 0244123456</b>. Header rows and extra columns (timestamps, emails) are ignored. You can also upload a .csv file (Google Forms → Responses → ⋮ → Download responses).</p>
+        <p class="help" style="margin:0 0 10px">Paste your list straight from Google Forms / Google Sheets / Excel / WhatsApp. One person per line, with a name and a phone number in any order, e.g. <b>Ama Mensah, 0244123456</b>. Header rows and extra columns (timestamps, emails) are ignored. You can also upload a .csv file (Google Forms → Responses → ⋮ → Download responses) or a <b>PDF of the form responses</b>; each response is read for its name and phone number.</p>
         <textarea id="bText" placeholder="Ama Mensah	0244123456&#10;Kofi Boateng, 020 123 4567&#10;Esi Owusu - +233551112222" style="min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:14px"></textarea>
         <div class="row" style="margin-top:10px">
-          <div><label>Or upload CSV</label><input type="file" id="bFile" accept=".csv,.txt,text/csv"></div>
+          <div><label>Or upload a file</label><input type="file" id="bFile" accept=".csv,.txt,.pdf,text/csv,application/pdf"><p class="help" style="margin:4px 0 0">CSV, or a PDF of Google Form responses (printed or saved as PDF)</p></div>
           <div><label>Ticket type for everyone</label><select id="bType"></select></div>
           <div><label>Amount per ticket (₵)</label><input type="number" id="bAmt" min="0" step="0.01" value="0"></div>
         </div>
@@ -459,7 +459,7 @@ function fillBatchTypes(){$('bType').innerHTML=TYPES.filter(t=>t.active).map(t=>
   const c=TYPES.find(t=>t.complimentary&&t.active);if(c)$('bType').value=c.slug;bAmtDefault()}
 function bAmtDefault(){const t=TYPES.find(x=>x.slug===$('bType').value);$('bAmt').value=t&&!t.complimentary?t.price:0}
 $('bType').onchange=bAmtDefault;
-function normPhone(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00233'))d=d.slice(5);else if(d.startsWith('233'))d=d.slice(3);if(d.length===9)d='0'+d;return /^0\d{9}$/.test(d)?d:''}
+function normPhone(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00233'))d=d.slice(5);else if(d.startsWith('233'))d=d.slice(3);if(d.length===9&&d[0]!=='0')d='0'+d;return /^0[235]\d{8}$/.test(d)?d:''}
 /* ---- smart list reader ---- */
 let BCOLS=null; // {cells:[[...]], header:[...], name:[idx..], phone:idx, start:n}
 const isPhoneCell=c=>!!normPhone(c)&&/^[\d\s+()\-.]{9,20}$/.test(String(c).trim());
@@ -488,7 +488,7 @@ function detectTable(text){
   const data=rows.slice(start);if(!data.length)return null;
   const score=(col,fn)=>{let n=0,t=0;data.forEach(r=>{const c=r[col];if(c==null||c==='')return;t++;if(fn(c))n++});return t?n/t:0};
   let phone=-1,best=0;
-  for(let c=0;c<width;c++){let sc=score(c,isPhoneCell);const h=header[c]||'';if(HDR_PHONE.test(h))sc+=.15;if(/whats\s*app/i.test(h))sc+=.1;if(/emergency|parent|guardian|next\s*of\s*kin/i.test(h))sc-=.4;if(sc>best){best=sc;phone=c}}
+  for(let c=0;c<width;c++){const cov=data.filter(r=>r[c]).length/data.length;let sc=score(c,isPhoneCell)*(.4+.6*cov);const h=header[c]||'';if(HDR_PHONE.test(h))sc+=.15;if(/whats\s*app/i.test(h))sc+=.1;if(/emergency|parent|guardian|next\s*of\s*kin/i.test(h))sc-=.4;if(sc>best){best=sc;phone=c}}
   if(best<.3)return null;
   let first=-1,last=-1,full=-1,fb=0;
   header.forEach((h,c)=>{if(c===phone)return;if(/first\s*name|given/i.test(h))first=c;else if(/surname|last\s*name|family|other\s*names?/i.test(h))last=c;else if(HDR_NAME.test(h)&&full<0)full=c});
@@ -538,8 +538,40 @@ function reparseWithCols(){const n=[+$('cName').value];if($('cName2'))n.push(+$(
     let status='ok';if(!p)status='bad_phone';else if(nm.length<2)status='bad_name';else if(seen.has(p))status='dup';if(status==='ok')seen.add(p);
     rows.push({line:keep.start+i+1,raw:r.join(' · '),name:nm,phone:p,status,include:status==='ok'})});
   BCOLS={...keep,name:n,phone:ph};parseBatch.skipped=skipped;BATCH=rows;renderBatch()}
-$('bFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('bText').value=await f.text();$('bPrev').click()};
-$('bPrev').onclick=()=>{BATCH=parseBatch($('bText').value);renderBatch()};
+/* Google Form responses printed/saved as PDF (one response after another) -> table */
+async function pdfLines(file){
+  $('bPreview').innerHTML='<p class="help">Reading PDF…</p>';
+  const pdfjs=await import('./assets/js/pdfjs/pdf.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc=new URL('./assets/js/pdfjs/pdf.worker.min.mjs',location.href).href;
+  const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;const out=[];
+  for(let p=1;p<=doc.numPages;p++){const tc=await (await doc.getPage(p)).getTextContent();const rows=[];
+    tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const y=it.transform[5],x=it.transform[4];let r=rows.find(r=>Math.abs(r.y-y)<3);if(!r){r={y,items:[]};rows.push(r)}r.items.push({x,s:it.str})});
+    rows.sort((a,b)=>b.y-a.y).forEach(r=>out.push(r.items.sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ').replace(/\s+/g,' ').trim()))}
+  return out.join('\n')}
+const F_NAME=/^(full\s*name|name|your\s*name|names?\s+of\s+(attendee|guest))\b[^a-z]*\*?\s*$/i;
+const F_PHONE=/^(phone|whats\s*app|mobile|contact|tel|momo|cell)[^\n]{0,40}\*?\s*$/i;
+function formToTable(text){
+  const L=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const nameIdx=L.map((l,i)=>F_NAME.test(l)&&l.length<45?i:-1).filter(i=>i>=0);
+  if(nameIdx.length<2)return null;
+  const isHelp=l=>/will be sent|optional|required|^your answer$|^\*$/i.test(l);
+  const isLabel=l=>F_NAME.test(l)||F_PHONE.test(l)&&!/\d{6,}/.test(l)||/^email\b/i.test(l);
+  const rows=[['Full name','Phone','Email','Second number']];
+  nameIdx.forEach((ni,k)=>{const end=nameIdx[k+1]??L.length;const blk=L.slice(ni+1,end);
+    const name=(blk.find(l=>!isHelp(l)&&!isLabel(l))||'');
+    const pi=blk.findIndex(l=>F_PHONE.test(l)&&!/\d{6,}/.test(l));
+    let phones=[];if(pi>=0)for(const l of blk.slice(pi+1,pi+5)){const m=l.match(/\+?\d[\d\s\-().]{7,}\d/g);if(m){phones=m.map(x=>x.trim());break}}
+    if(!phones.length){const any=blk.join(' ').match(/(\+?233|0)\d[\d\s\-]{7,11}\d/);if(any)phones=[any[0]]}
+    const ei=blk.findIndex(l=>/^email\b/i.test(l));const em=ei>=0?(blk.slice(ei+1,ei+3).find(l=>/@/.test(l))||''):'';
+    rows.push([name,phones[0]||'',em,phones.slice(1).join(' / ')])});
+  return rows.map(r=>r.map(c=>String(c).replace(/[\t\n]/g,' ')).join('\t')).join('\n')}
+$('bFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{let t=/\.pdf$/i.test(f.name)||f.type==='application/pdf'?await pdfLines(f):await f.text();
+    const ft=formToTable(t);$('bText').value=ft||t;
+    if(!ft&&/\.pdf$/i.test(f.name)&&!/\d{9}/.test(t)){$('bPreview').innerHTML='<p class="msg bad">This PDF has no readable text (it may be a scanned image). Download the responses as CSV from Google Forms instead.</p>';return}
+  }catch(err){$('bPreview').innerHTML='<p class="msg bad">Could not read that file: '+esc(err.message||String(err))+'</p>';return}
+  $('bPrev').click()};
+$('bPrev').onclick=()=>{const ft=formToTable($('bText').value);if(ft)$('bText').value=ft;BATCH=parseBatch($('bText').value);renderBatch()};
 function renderBatch(){
   if(!BATCH.length){$('bPreview').innerHTML='<p class="msg bad">Nothing found. Paste one person per line with a name and phone number.</p>';return}
   const ok=BATCH.filter(r=>r.include).length,bad=BATCH.filter(r=>r.status.startsWith('bad')).length,dup=BATCH.filter(r=>r.status==='dup').length;
