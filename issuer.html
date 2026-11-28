@@ -103,7 +103,7 @@ textarea.in{width:100%;min-height:90px;padding:13px;border:1.5px solid var(--lin
 
 <!-- APP -->
 <section id="vApp" class="hide">
-  <header><div class="hrow"><div class="logo">PAADO ISLAND<small>TICKET ISSUER</small></div><div class="who"><div id="hName"></div><button id="hOut">Sign out</button></div></div></header>
+  <header><div class="hrow"><div class="logo">PAADO ISLAND<small>TICKET ISSUER</small></div><div class="who"><div id="hName"></div><button id="hScan" class="hide">🎫 Scan</button> <button id="hOut">Sign out</button></div></div></header>
   <main>
     <div class="appr hide" id="apprBox"><h2>Free tickets to approve <i id="apprN">0</i></h2><div id="apprList"></div></div>
     <p id="minorNote" class="hide" style="background:#fff3d6;border-radius:14px;padding:10px 12px;font-weight:700;font-size:.88rem;margin-bottom:12px"></p>
@@ -151,11 +151,13 @@ $('lGo').onclick=async()=>{const p=$('lPin').value.replace(/\D/g,'');$('lErr').t
   $('lGo').disabled=true;const r=await api({action:'issuer_login',email:EMAIL,pin:p});$('lGo').disabled=false;
   if(!r.ok)return $('lErr').textContent=r.error||'Could not sign in.';
   PIN=p;sessionStorage.setItem('pi_email',EMAIL);sessionStorage.setItem('pi_pin',PIN);boot(r)};
+$('hScan').onclick=()=>{sessionStorage.setItem('paado_email',EMAIL);sessionStorage.setItem('paado_pin',PIN);location.href='staff.html'};
 $('hOut').onclick=()=>{sessionStorage.removeItem('pi_email');sessionStorage.removeItem('pi_pin');location.reload()};
 
 /* ---------- app ---------- */
 function boot(r){DATA=r;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').innerHTML=esc(r.name)+`<br><span class="lvl">${r.level==='minor'?'MINOR ISSUER':'MAJOR ISSUER'}</span>`;
   $('minorNote').classList.toggle('hide',r.level!=='minor');if(r.level==='minor')$('minorNote').textContent=`Free tickets (₵0) need approval${r.supervisor?' from '+r.supervisor+' first':' from a major issuer'}. Paid tickets go out straight away.`;
+  api({action:'staff_login',email:EMAIL,pin:PIN}).then(x=>$('hScan').classList.toggle('hide',!(x&&x.ok)));
   if(r.level==='major'){renderPending(r.pending||[]);clearInterval(window.__pp);window.__pp=setInterval(pollPending,4000)}
   const keep=+$('fEv').value;$('fEv').innerHTML=r.events.map(e=>`<option value="${e.id}">${esc(e.name)}${e.status==='test'?' (TEST)':''}</option>`).join('');
   if(r.events.some(e=>e.id===keep))$('fEv').value=keep;$('evW').classList.toggle('hide',r.events.length<2);renderTypes();renderStats()}

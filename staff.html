@@ -162,7 +162,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     <div class="camerr hide" id="camErr"><div id="camErrTx"></div><button class="bigbtn" style="max-width:300px" onclick="startCam()">Turn on camera</button></div>
   </div>
   <div class="top">
-    <div class="who"><b>PAADO GATE</b><small id="staffName"></small><small id="evLine" style="display:block;opacity:.7;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></small></div>
+    <div class="who"><b>PAADO GATE</b><small id="staffName"></small><button id="issueLink" class="hide" onclick="goIssue()" style="display:block;width:max-content;margin:6px 0 4px;background:var(--sun-2);color:var(--ink);border:0;border-radius:999px;padding:6px 12px;font:800 .78rem var(--body)">💵 Issue tickets →</button><small id="evLine" style="display:block;opacity:.7;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></small></div>
     <div style="display:flex;align-items:center;gap:6px"><div class="ctr"><b id="inCount">0</b><small>OF <span id="soldCount">0</span> IN</small></div><button class="menu" id="menuBtn" aria-label="Menu">⋮</button></div>
   </div>
   <div class="offline hide" id="offline">No internet. Scans won't work until you're back online.</div>
@@ -213,11 +213,14 @@ $('pad').addEventListener('click',async e=>{const k=e.target.closest('button')?.
   login(pin)});
 async function login(pin){$('perr').textContent='Signing in…';
   const r=await api({action:'staff_login',email:EMAIL,pin});
+  if(!r.ok&&r.issuer){sessionStorage.setItem('pi_email',EMAIL);sessionStorage.setItem('pi_pin',pin);location.href='issuer.html';return}
   if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';shake();sessionStorage.removeItem('paado_pin');PIN='';
     if(EMAIL&&$('pinStep').classList.contains('hide')){$('emailF').requestSubmit()}return}
   PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;window.__evs=r.events||[];$('staffName').title=(r.events||[]).map(e=>e.name).join(', ');$('evLine').textContent=(r.events||[]).length===1?r.events[0].name:(r.events||[]).length+' events';$('evLine').innerHTML=((r.events||[]).some(e=>e.status==='test')?'<span style="background:#ffd75e;color:#3a2600;border-radius:6px;padding:1px 6px;font-weight:800;margin-right:4px">TEST</span>':'')+esc($('evLine').textContent);setCounts(r.checked_in,r.sold);
   $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam();keepAwake();
-  clearInterval(window.__stats);window.__stats=setInterval(refreshCounts,30000)}
+  clearInterval(window.__stats);window.__stats=setInterval(refreshCounts,30000);
+  api({action:'issuer_login',...auth()}).then(x=>{window.__canIssue=!!(x&&x.ok);$('issueLink').classList.toggle('hide',!window.__canIssue)})}
+function goIssue(){sessionStorage.setItem('pi_email',EMAIL);sessionStorage.setItem('pi_pin',PIN);stopCam();location.href='issuer.html'}
 function setCounts(i,s){if(i!=null)$('inCount').textContent=i;if(s!=null)$('soldCount').textContent=s}
 async function refreshCounts(){if(document.hidden||!PIN)return;const r=await api({action:'staff_login',...auth()});if(r.ok)setCounts(r.checked_in,r.sold)}
 function logout(){sessionStorage.removeItem('paado_pin');sessionStorage.removeItem('paado_email');stopCam();location.reload()}
@@ -295,6 +298,7 @@ function lostSheet(t){
       $('lostGo').textContent='Verify & redeem';$('lostGo').disabled=!!r.locked;if(r.locked)t.locked=true;return}
     closeSheet();busy=true;showResult(r,'lost')}}
 $('menuBtn').onclick=()=>{sheet(`<h3>${esc($('staffName').textContent)}</h3><p class="sub">${esc(EMAIL)}</p>
+  ${window.__canIssue?'<button class="bigbtn" style="margin:0 0 12px" onclick="goIssue()">💵 Switch to ticket issuing</button>':''}
   <div class="mi"><span>Sound on scan</span><button id="sndBtn">${SOUND?'On':'Off'}</button></div>
   <div class="mi"><span>Restart camera</span><button onclick="closeSheet();startCam()">Restart</button></div>
   <div class="mi"><span>Install on home screen</span><button id="instBtn">How?</button></div>
