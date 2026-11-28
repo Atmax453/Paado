@@ -400,7 +400,7 @@ let TYPES=[
   {slug:'single',name:'Single',price:100,people:1,includes:['Transportation','Canoe ride','Cup for drinks','All free games','Music performance','DJ sessions'],color:'sand'},
   {slug:'double',name:'Double',price:180,people:2,badge:'BEST VALUE',includes:['Transportation ×2','Canoe ride ×2','Cup for drinks ×2','All free games ×2','Music performance ×2','DJ sessions ×2'],color:'sky'}];
 let OPEN=true;
-const q=new URLSearchParams(location.search);
+const q=new URLSearchParams(location.search);const EVQ=(q.get('e')||'').toLowerCase().replace(/[^a-z0-9-]/g,'');
 function evOpts(){const d=new Date(S.event_date);const day=isNaN(d)?'':d.getUTCDate();const suf=[,'ST','ND','RD'][day%100>10&&day%100<14?0:day%10]||'TH';
   return {edition:S.edition,time:S.time_label,date:isNaN(d)?S.date_label:day+suf+' '+d.toLocaleString('en',{month:'short',timeZone:'UTC'}).toUpperCase(),venue:S.venue,url:SITE}}
 
@@ -515,7 +515,7 @@ function payForm(t){
   const card=async()=>{const f=new FormData($('payF'));$('perr').textContent='';
     if(!f.get('name')||!f.get('phone')){$('perr').textContent='Enter your name and phone number first.';return}
     $('payCard').textContent='Opening card payment…';
-    const r=await api({action:'init',tier,name:f.get('name'),phone:f.get('phone'),qty,return_url:SITE});
+    const r=await api({action:'init',event:EVQ,tier,name:f.get('name'),phone:f.get('phone'),qty,return_url:SITE});
     if(r.ok&&r.url){location.href=r.url;return}
     $('perr').textContent=r.error||'Could not start payment.';$('payCard').textContent='Pay with card instead'};
   $('payCard').onclick=card;
@@ -523,7 +523,7 @@ function payForm(t){
     e.preventDefault();const f=new FormData(e.target),b=$('payGo');
     if(!f.get('net')){$('perr').textContent='Pick your network.';return}
     b.disabled=true;b.textContent='Sending prompt to your phone…';$('perr').textContent='';
-    const r=await api({action:'momo',tier,name:f.get('name'),phone:f.get('phone'),provider:f.get('net'),qty});
+    const r=await api({action:'momo',event:EVQ,tier,name:f.get('name'),phone:f.get('phone'),provider:f.get('net'),qty});
     if(r.ok&&r.status==='success'&&r.ticket){showTicket(r.ticket);return}
     if(r.ok&&r.reference){momoWait(r.reference,r.status,r.display_text,f.get('phone'));return}
     if(r.fallback){$('perr').textContent='MoMo prompt unavailable right now. Opening Paystack instead…';await card();return}
@@ -571,7 +571,7 @@ async function showTicket(t){
 }
 window.openTicket=async code=>{openM(`<h3>Loading ticket…</h3><div class="spinner"></div>`);
   const r=await api({action:'ticket',code});
-  if(r.ok&&r.ticket)return showTicket(r.ticket);
+  if(r.ok&&r.ticket){if(r.event&&r.event.settings&&r.event.slug!==window.__evSlug)S=Object.assign({},S,r.event.settings);return showTicket(r.ticket)}
   openM(`<h3>Ticket not found</h3><p class="sub">${esc(r.error||'Check the code and try again.')}</p>`)};
 function findForm(){
   openM(`<h3>Find my ticket</h3><p class="sub">Enter the phone number you paid with.</p>
@@ -588,7 +588,7 @@ async function checkReturn(){
   history.replaceState(null,'',location.pathname);
   openM(`<h3>Confirming payment…</h3><p class="sub">Hold on a few seconds.</p><div class="spinner"></div>`);
   for(let i=0;i<6;i++){const r=await api({action:'verify',reference:ref});
-    if(r.ok&&r.ticket){showTicket(r.ticket);return true}
+    if(r.ok&&r.ticket){openTicket(r.ticket.code);return true}
     if(r.error){openM(`<h3>Hmm.</h3><p class="sub">${esc(r.error)}</p><p class="fine">Reference: ${esc(ref)}. Call ${esc((S.phones||[])[0]||'')} if you were charged.</p>`);return true}
     if(r.ticket&&r.ticket.status==='failed'){openM(`<h3>Payment didn't go through</h3><p class="sub">You weren't charged. Try again?</p><button class="btn btn-sun" onclick="payForm()">Try again</button>`);return true}
     await new Promise(z=>setTimeout(z,2500))}
@@ -597,8 +597,8 @@ async function checkReturn(){
 
 /* ---------- boot ---------- */
 render();refreshMy();
-api({action:'info',type:q.get('buy')||''}).then(async r=>{
-  if(r&&r.ok){S=Object.assign(S,r.settings||{});if(r.types&&r.types.length)TYPES=r.types.map(t=>({...t,price:Number(t.price)}));OPEN=r.open!==false;render();tick()}
+api({action:'info',event:EVQ,type:q.get('buy')||''}).then(async r=>{
+  if(r&&r.ok){window.__evSlug=r.event&&r.event.slug;S=Object.assign(S,r.settings||{});if(r.types&&r.types.length)TYPES=r.types.map(t=>({...t,price:Number(t.price)}));OPEN=r.open!==false;render();tick()}
   if(await checkReturn())return;
   if(q.get('t'))return openTicket(q.get('t'));
   if(q.get('buy'))payForm(q.get('buy'));

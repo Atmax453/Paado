@@ -162,7 +162,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     <div class="camerr hide" id="camErr"><div id="camErrTx"></div><button class="bigbtn" style="max-width:300px" onclick="startCam()">Turn on camera</button></div>
   </div>
   <div class="top">
-    <div class="who"><b>PAADO GATE</b><small id="staffName"></small></div>
+    <div class="who"><b>PAADO GATE</b><small id="staffName"></small><small id="evLine" style="display:block;opacity:.7;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></small></div>
     <div style="display:flex;align-items:center;gap:6px"><div class="ctr"><b id="inCount">0</b><small>OF <span id="soldCount">0</span> IN</small></div><button class="menu" id="menuBtn" aria-label="Menu">⋮</button></div>
   </div>
   <div class="offline hide" id="offline">No internet. Scans won't work until you're back online.</div>
@@ -215,7 +215,7 @@ async function login(pin){$('perr').textContent='Signing in…';
   const r=await api({action:'staff_login',email:EMAIL,pin});
   if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';shake();sessionStorage.removeItem('paado_pin');PIN='';
     if(EMAIL&&$('pinStep').classList.contains('hide')){$('emailF').requestSubmit()}return}
-  PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;setCounts(r.checked_in,r.sold);
+  PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;window.__evs=r.events||[];$('staffName').title=(r.events||[]).map(e=>e.name).join(', ');$('evLine').textContent=(r.events||[]).length===1?r.events[0].name:(r.events||[]).length+' events';setCounts(r.checked_in,r.sold);
   $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam();keepAwake();
   clearInterval(window.__stats);window.__stats=setInterval(refreshCounts,30000)}
 function setCounts(i,s){if(i!=null)$('inCount').textContent=i;if(s!=null)$('soldCount').textContent=s}
@@ -321,7 +321,8 @@ async function check(code,method){
   if(r.relogin)return logout();
   if(r.error){buzz(false);return show('invalid',`<div class="ico">!</div><div class="big">Error</div><div class="meta">${esc(r.error)}</div>`,`<button onclick="check('${esc(code)}','${method}')">Try again</button><button class="ghost" onclick="done()">Cancel</button>`)}
   showResult(r,method)}
-function showResult(r,method){
+function wrongEv(r){buzz(false);addRecent(r.code||'','',false);return show('invalid',`<div class="ico">✕</div><div class="big">Wrong event</div><div class="meta">This ticket is for <b>${esc(r.event_name||'another event')}</b>. You can only admit guests for ${esc((window.__evs||[]).map(e=>e.name).join(', ')||'your event')}.</div>`,NEXT)}
+function showResult(r,method){if(r.result==='wrong_event')return wrongEv(r);
   const code=r.code;
   if(r.result==='invalid'){buzz(false);addRecent(code,'',false);return show('invalid',`<div class="ico">✕</div><div class="big">Not valid</div><div class="meta">No ticket with this code. Don't let them in.</div><div class="code">${esc(r.code)}</div>`,NEXT)}
   if(r.result==='unpaid'){buzz(false);addRecent(code,r.name,false);return show('unpaid',`<div class="ico">!</div><div class="big">Not paid</div><div class="nm">${esc(r.name)}</div><div class="meta">Payment for this ticket was not completed.</div><div class="code">${esc(r.code)}</div>`,NEXT)}
@@ -340,6 +341,7 @@ window.admit=async(code,n,method)=>{
   if(r.result==='admitted'){buzz(true);addRecent(code,r.name,true);setCounts(Number($('inCount').textContent)+r.admitted);
     show('admitted',`<div class="ico">✓</div><div class="big">Admitted ${r.admitted}</div><div class="nm">${esc(r.name)}</div><div class="meta">${esc(r.tier)} · ${r.used} of ${r.total} in</div>${dots(r.total,r.used)}`,NEXT,true);
     window.__autoT=setTimeout(()=>{if($('res').classList.contains('admitted'))done()},2500);return}
+  if(r.result==='wrong_event')return wrongEv(r);
   buzz(false);
   if(r.result==='redeemed')return show('redeemed',`<div class="ico">✕</div><div class="big">Already redeemed</div><div class="meta">${r.last_at?'Redeemed '+when(r.last_at)+(r.last_by?' by '+esc(r.last_by):''):''}</div>`,NEXT);
   show('invalid',`<div class="ico">!</div><div class="big">Not admitted</div><div class="meta">${esc(r.error||'Try again.')}</div>`,NEXT)};
