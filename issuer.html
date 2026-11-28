@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#03211f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Paado Issuer">
+<link rel="apple-touch-icon" href="assets/gate-192.png">
+<title>Paado · Ticket Issuer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--deep:#03211f;--lagoon:#063a3f;--sun:#ff6a1a;--sun-2:#ffb21f;--cream:#fff8ea;--paper:#fffdf8;--ink:#0b0b0b;--muted:#6b6355;--line:#eadfca;--ok:#15924d;--bad:#d32f2f;
+  --display:'Anton',Impact,sans-serif;--body:'Bricolage Grotesque',system-ui,sans-serif;--st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--body);background:var(--cream);color:var(--ink);min-height:100vh}
+button,input,select{font-family:var(--body)}
+button{cursor:pointer}
+.hide{display:none!important}
+/* login */
+.login{min-height:100vh;background:var(--deep);color:var(--cream);display:flex;align-items:center;justify-content:center;padding:calc(var(--st) + 24px) 22px calc(var(--sb) + 24px);text-align:center}
+.login h1{font-family:var(--display);font-size:2.6rem;line-height:1;text-transform:uppercase}.login h1 span{color:var(--sun-2)}
+.login p{opacity:.75;font-weight:600;margin:10px 0 22px}
+.box{width:min(380px,100%)}
+.field{width:100%;padding:17px;border-radius:16px;border:0;font:700 17px var(--body);text-align:center;background:#fff;color:var(--ink);margin-top:10px}
+.big{width:100%;margin-top:12px;padding:17px;border:0;border-radius:16px;background:var(--sun-2);color:var(--ink);font:800 1.08rem var(--body)}
+.big:disabled{opacity:.6}
+.err{color:#ffb4a8;font-weight:700;min-height:1.3em;margin-top:12px}
+.link{background:none;border:0;color:inherit;opacity:.7;text-decoration:underline;margin-top:16px;font-weight:700}
+/* app */
+header{position:sticky;top:0;z-index:5;background:var(--deep);color:var(--cream);padding:calc(var(--st) + 12px) 18px 12px}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:640px;margin:0 auto}
+.logo{font-family:var(--display);font-size:1.3rem;letter-spacing:.02em}.logo small{display:block;font-family:var(--body);font-weight:800;font-size:.68rem;letter-spacing:.18em;color:var(--sun-2)}
+.who{text-align:right;font-weight:700;font-size:.85rem;opacity:.85}.who button{background:none;border:1px solid rgba(255,255,255,.3);color:var(--cream);border-radius:999px;padding:5px 12px;font-weight:800;font-size:.75rem;margin-top:4px}
+main{max-width:640px;margin:0 auto;padding:16px 16px calc(var(--sb) + 40px)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px}
+.stat b{font-family:var(--display);font-size:1.9rem;display:block;line-height:1}.stat span{font-size:.78rem;font-weight:700;color:var(--muted)}
+.stat.cash{background:#fff3e2;border-color:#ffd2a8}
+.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 10px 30px -22px rgba(0,0,0,.4)}
+h2{font-family:var(--display);text-transform:uppercase;font-size:1.5rem;margin-bottom:4px}
+label{display:block;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:16px 0 7px}
+input.in,select.in{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:14px;font:700 17px var(--body);background:var(--paper);color:var(--ink)}
+input.in:focus,select.in:focus{outline:none;border-color:var(--sun)}
+.types{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.types button{border:1.5px solid var(--line);background:var(--paper);border-radius:14px;padding:12px;text-align:left;font-weight:800;color:var(--ink)}
+.types button small{display:block;color:var(--muted);font-weight:700;margin-top:2px}
+.types button.on{border-color:var(--sun);background:#fff1e6;box-shadow:0 0 0 2px var(--sun) inset}
+.money{position:relative}.money span{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-weight:800;font-size:18px;color:var(--muted)}.money input{padding-left:36px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{border:1.5px solid var(--line);background:var(--paper);border-radius:14px;padding:12px;font-weight:800;text-align:left;color:var(--ink)}
+.seg button small{display:block;font-weight:600;color:var(--muted);font-size:.78rem;margin-top:2px}
+.seg button.on{border-color:var(--deep);background:var(--deep);color:var(--cream)}.seg button.on small{color:#cfe3df}
+.go{width:100%;margin-top:18px;padding:18px;border:0;border-radius:16px;background:var(--sun);color:#fff;font:800 1.1rem var(--body)}
+.msg{font-weight:700;color:var(--bad);min-height:1.2em;margin-top:10px}
+/* history */
+.hist{margin-top:18px}
+.hi{display:flex;justify-content:space-between;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.hi b{display:block}.hi small{color:var(--muted);font-weight:600}
+.amt{font-weight:800;text-align:right;white-space:nowrap}
+.tag{display:inline-block;font-size:.66rem;font-weight:800;letter-spacing:.06em;padding:2px 8px;border-radius:999px;margin-top:3px}
+.t-ok{background:#e3f5ea;color:var(--ok)}.t-wait{background:#fff3d6;color:#9a6a00}.t-no{background:#fde4e4;color:var(--bad)}.t-set{background:#e5efff;color:#1f4fa8}
+/* sheet */
+.ov{position:fixed;inset:0;background:rgba(3,20,18,.6);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:min(560px,100%);border-radius:26px 26px 0 0;padding:22px 20px calc(var(--sb) + 22px);max-height:92vh;overflow:auto;animation:up .2s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+@media(min-width:640px){.ov{align-items:center}.sheet{border-radius:26px}}
+.sheet h3{font-family:var(--display);text-transform:uppercase;font-size:1.7rem;line-height:1.05;margin-bottom:8px}
+.oath{background:#fff;border:2px dashed var(--sun);border-radius:16px;padding:16px;font-weight:700;line-height:1.45;margin:14px 0}
+.oath .big2{font-family:var(--display);font-size:2.4rem;color:var(--sun);display:block;line-height:1;margin-bottom:6px}
+.yes{width:100%;padding:17px;border:0;border-radius:16px;background:var(--ok);color:#fff;font:800 1.05rem var(--body);margin-top:6px}
+.no{width:100%;padding:15px;border:2px solid var(--bad);border-radius:16px;background:none;color:var(--bad);font:800 1rem var(--body);margin-top:10px}
+.wa{display:block;text-align:center;text-decoration:none;width:100%;padding:17px;border-radius:16px;background:#25d366;color:#05301a;font:800 1.08rem var(--body);margin-top:10px}
+.ghost{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:16px;background:#fff;color:var(--ink);font:800 1rem var(--body);margin-top:10px}
+.lk{word-break:break-all;font-family:ui-monospace,Menlo,monospace;font-size:.85rem;background:#f4ede0;border-radius:12px;padding:10px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<section class="login" id="vLogin">
+  <div class="box">
+    <h1>Ticket <span>Issuer</span></h1>
+    <p id="lSub">Sign in with the email the admin added.</p>
+    <div id="sEmail"><input class="field" id="lEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com"><button class="big" id="lNext">Continue</button></div>
+    <div id="sPin" class="hide"><input class="field" id="lPin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="6-digit PIN"><input class="field hide" id="lPin2" type="password" inputmode="numeric" maxlength="6" placeholder="Repeat PIN"><button class="big" id="lGo">Sign in</button><button class="link" id="lBack">Use another email</button></div>
+    <div class="err" id="lErr"></div>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="vApp" class="hide">
+  <header><div class="hrow"><div class="logo">PAADO ISLAND<small>TICKET ISSUER</small></div><div class="who"><div id="hName"></div><button id="hOut">Sign out</button></div></div></header>
+  <main>
+    <div class="stats"><div class="stat cash"><b id="sHeld">₵0</b><span>Cash you're holding</span></div><div class="stat"><b id="sIssued">0</b><span>Tickets you've issued</span></div></div>
+    <div class="card">
+      <h2>Issue a ticket</h2>
+      <div id="evW"><label>Event</label><select class="in" id="fEv"></select></div>
+      <label>Ticket type</label><div class="types" id="fTypes"></div>
+      <label>Guest's full name</label><input class="in" id="fName" autocomplete="off" placeholder="e.g. Ama Mensah">
+      <label>Guest's WhatsApp number</label><input class="in" id="fPhone" inputmode="tel" autocomplete="off" placeholder="05X XXX XXXX">
+      <label>Money you received</label><div class="money"><span>₵</span><input class="in" id="fAmt" inputmode="decimal" placeholder="0"></div>
+      <label>Send the guest</label>
+      <div class="seg" id="fMode"><button data-m="ticket" class="on">Their ticket<small>QR ticket, ready at once</small></button><button data-m="link">A one-time link<small>They open it to get the ticket</small></button></div>
+      <button class="go" id="fGo">Issue ticket →</button>
+      <div class="msg" id="fMsg"></div>
+    </div>
+    <div class="hist"><h2 style="font-size:1.2rem">Your recent tickets</h2><div id="hist"></div></div>
+  </main>
+</section>
+
+<div class="ov hide" id="ov"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const API="https://xzeahvkmvrdpxcfsgwqh.supabase.co/functions/v1/paado-tickets",ANON="sb_publishable_LCRngOPZzgc6E-QwT6jjZQ_hb0qqLjY";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api=b=>fetch(API,{method:'POST',headers:{'content-type':'application/json',apikey:ANON},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({error:'Network problem. Check your connection.'}));
+const cedi=n=>'₵'+Number(n||0).toLocaleString('en',{maximumFractionDigits:2});
+const normPhone=p=>{let d=String(p||'').replace(/\D/g,'');if(d.startsWith('233'))d=d.slice(3);if(d.length===9&&d[0]!=='0')d='0'+d;return /^0[235]\d{8}$/.test(d)?d:''};
+let EMAIL=sessionStorage.getItem('pi_email')||'',PIN=sessionStorage.getItem('pi_pin')||'',DATA=null,TYPE=null,MODE='ticket',NEWPIN=false;
+
+/* ---------- login ---------- */
+function showPin(needs){NEWPIN=needs;$('sEmail').classList.add('hide');$('sPin').classList.remove('hide');$('lPin2').classList.toggle('hide',!needs);
+  $('lSub').textContent=needs?'Create a 6-digit PIN. You will use it every time you sign in.':'Enter your 6-digit PIN.';$('lGo').textContent=needs?'Save PIN & sign in':'Sign in';$('lPin').value='';$('lPin2').value='';$('lPin').focus()}
+$('lNext').onclick=async()=>{const em=$('lEmail').value.trim().toLowerCase();if(!em)return;$('lErr').textContent='';$('lNext').disabled=true;
+  const r=await api({action:'staff_check',email:em});$('lNext').disabled=false;
+  if(!r.ok)return $('lErr').textContent=r.error||'Not found.';EMAIL=em;showPin(!!r.needs_pin)};
+$('lEmail').onkeydown=e=>{if(e.key==='Enter')$('lNext').click()};
+$('lBack').onclick=()=>{$('sPin').classList.add('hide');$('sEmail').classList.remove('hide');$('lSub').textContent='Sign in with the email the admin added.';$('lErr').textContent=''};
+$('lPin').onkeydown=$('lPin2').onkeydown=e=>{if(e.key==='Enter')$('lGo').click()};
+$('lGo').onclick=async()=>{const p=$('lPin').value.replace(/\D/g,'');$('lErr').textContent='';
+  if(p.length!==6)return $('lErr').textContent='Your PIN must be 6 digits.';
+  if(NEWPIN){if($('lPin2').value!==p)return $('lErr').textContent="The two PINs don't match.";
+    const s=await api({action:'staff_setpin',email:EMAIL,pin:p});if(!s.ok)return $('lErr').textContent=s.error||'Could not save PIN.'}
+  $('lGo').disabled=true;const r=await api({action:'issuer_login',email:EMAIL,pin:p});$('lGo').disabled=false;
+  if(!r.ok)return $('lErr').textContent=r.error||'Could not sign in.';
+  PIN=p;sessionStorage.setItem('pi_email',EMAIL);sessionStorage.setItem('pi_pin',PIN);boot(r)};
+$('hOut').onclick=()=>{sessionStorage.removeItem('pi_email');sessionStorage.removeItem('pi_pin');location.reload()};
+
+/* ---------- app ---------- */
+function boot(r){DATA=r;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').textContent=r.name;
+  const keep=+$('fEv').value;$('fEv').innerHTML=r.events.map(e=>`<option value="${e.id}">${esc(e.name)}${e.status==='test'?' (TEST)':''}</option>`).join('');
+  if(r.events.some(e=>e.id===keep))$('fEv').value=keep;$('evW').classList.toggle('hide',r.events.length<2);renderTypes();renderStats()}
+function curEv(){return DATA.events.find(e=>e.id===+$('fEv').value)||DATA.events[0]}
+function renderTypes(){const ev=curEv();if(!ev.types.some(t=>t.slug===TYPE))TYPE=(ev.types[0]||{}).slug;
+  $('fTypes').innerHTML=ev.types.map(t=>`<button data-s="${esc(t.slug)}" class="${t.slug===TYPE?'on':''}">${esc(t.name)}<small>${t.price>0?'Price '+cedi(t.price):'Free'}${t.people>1?' · admits '+t.people:''}</small></button>`).join('')||'<p>No ticket types available.</p>';
+  $('fTypes').querySelectorAll('button').forEach(b=>b.onclick=()=>{TYPE=b.dataset.s;const t=ev.types.find(x=>x.slug===TYPE);if(t&&$('fAmt').dataset.touched!=='1')$('fAmt').value=t.price||0;renderTypes()});
+  const t=ev.types.find(x=>x.slug===TYPE);if(t&&$('fAmt').dataset.touched!=='1')$('fAmt').value=t.price||0}
+$('fEv').onchange=renderTypes;
+$('fAmt').oninput=()=>{$('fAmt').dataset.touched='1'};
+$('fMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{MODE=b.dataset.m;$('fMode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
+function renderStats(){const s=DATA.stats;$('sHeld').textContent=cedi(s.cash_held);$('sIssued').textContent=s.issued;
+  $('hist').innerHTML=(DATA.history||[]).map(h=>{const t=new Date(h.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const st=h.action==='declined'?'<span class="tag t-no">REJECTED · not issued</span>':h.action==='issued_link'?(h.claimed?'<span class="tag t-ok">LINK USED ✓</span>':'<span class="tag t-wait">LINK NOT OPENED YET</span>'):'<span class="tag t-ok">TICKET SENT</span>';
+    return `<div class="hi"><div><b>${esc(h.name)}</b><small>${esc(h.type)} · ${esc(h.phone)} · ${t}</small><br>${st}${h.settled?' <span class="tag t-set">HANDED IN</span>':''}</div><div class="amt">${h.action==='declined'?'—':cedi(h.amount)}</div></div>`}).join('')||'<p style="color:var(--muted);font-weight:600;padding:10px 0">Nothing issued yet.</p>'}
+async function refresh(){const r=await api({action:'issuer_history',email:EMAIL,pin:PIN});if(r.ok){DATA.stats=r.stats;DATA.history=r.history;renderStats()}else if(r.relogin)$('hOut').click()}
+
+/* ---------- issue flow ---------- */
+const openS=h=>{$('sheet').innerHTML=h;$('ov').classList.remove('hide')};const closeS=()=>$('ov').classList.add('hide');
+$('ov').onclick=e=>{if(e.target===$('ov')&&!$('ov').dataset.lock)closeS()};
+$('fGo').onclick=()=>{$('fMsg').textContent='';const ev=curEv(),t=ev.types.find(x=>x.slug===TYPE);
+  const name=$('fName').value.replace(/\s+/g,' ').trim(),phone=normPhone($('fPhone').value),amt=Math.round(Number(String($('fAmt').value).replace(/[^\d.]/g,''))*100)/100;
+  if(!t)return $('fMsg').textContent='Pick a ticket type.';
+  if(name.length<2)return $('fMsg').textContent="Enter the guest's full name.";
+  if(!phone)return $('fMsg').textContent='Enter a valid Ghana WhatsApp number (e.g. 024 123 4567).';
+  if(!(amt>=0)||$('fAmt').value==='')return $('fMsg').textContent='Enter how much you received (0 if free).';
+  const req={event_id:ev.id,type:t.slug,name,phone,amount:amt,mode:MODE};
+  const free=amt===0;$('ov').dataset.lock='1';
+  openS(`<h3>${free?'Free ticket?':'Did you receive the money?'}</h3>
+    <div class="oath">${free?`<span class="big2">FREE</span>I confirm this is a <u>free</u> ${esc(t.name)} ticket for <b>${esc(name)}</b> (${esc(phone)}) and I take responsibility for giving it out.`:`<span class="big2">${cedi(amt)}</span>I, <b>${esc(DATA.name)}</b>, confirm I have <u>received ${cedi(amt)}</u> from <b>${esc(name)}</b> (${esc(phone)}) for 1 × ${esc(t.name)}. I am responsible for handing this money to the organisers.`}</div>
+    <p style="font-size:.85rem;color:var(--muted);font-weight:600">This is recorded with your name and the time.${!free&&t.price&&amt<t.price?` Note: the normal price is ${cedi(t.price)}.`:''}</p>
+    <button class="yes" id="cYes">${free?'Yes, issue free ticket':'Yes, I received '+cedi(amt)}</button><button class="no" id="cNo">No, I haven't received it</button>`);
+  $('cNo').onclick=async()=>{$('cNo').disabled=true;await api({action:'issuer_decline',email:EMAIL,pin:PIN,...req});
+    openS(`<h3>Rejected</h3><p style="font-weight:600">Nothing was issued. Collect the money first, then try again.</p><button class="ghost" id="cOk">OK</button>`);$('cOk').onclick=()=>{delete $('ov').dataset.lock;closeS()};refresh()};
+  $('cYes').onclick=()=>issue(req,false)};
+async function issue(req,force){$('sheet').querySelectorAll('button').forEach(b=>b.disabled=true);
+  const r=await api({action:'issuer_issue',email:EMAIL,pin:PIN,...req,confirm:true,force});
+  if(r.duplicate){openS(`<h3>Already has a ticket</h3><p style="font-weight:600;line-height:1.45">${esc(r.duplicate.name)} (${esc(req.phone)}) already has a <b>${esc(r.duplicate.tier)}</b> ticket for this event (${esc(r.duplicate.code)}).</p><button class="yes" id="dYes">Issue another anyway</button><button class="no" id="dNo">Cancel</button>`);
+    $('dYes').onclick=()=>issue(req,true);$('dNo').onclick=()=>{delete $('ov').dataset.lock;closeS()};return}
+  if(!r.ok){if(r.relogin)return $('hOut').click();openS(`<h3>Not issued</h3><p style="font-weight:600">${esc(r.error||'Something went wrong.')}</p><button class="ghost" id="eOk">OK</button>`);$('eOk').onclick=()=>{delete $('ov').dataset.lock;closeS()};return}
+  const first=r.name.split(' ')[0];
+  const text=r.mode==='link'?`Hi ${first}, here's your personal Paado Island Experience ticket link 🌴\n${r.link}\nOpen it and tap "Get my ticket". It works once, so don't share it.`:`Hi ${first}, here's your Paado Island Experience ticket 🌴\n${r.link}\nShow the QR code at the gate. See you on the island!`;
+  const wa='https://wa.me/233'+r.phone.slice(1)+'?text='+encodeURIComponent(text);
+  openS(`<h3>${r.mode==='link'?'Link ready ✓':'Ticket ready ✓'}</h3><p style="font-weight:600">${esc(r.type)} for <b>${esc(r.name)}</b> · ${esc(r.phone)}</p><div class="lk">${esc(r.link)}</div>
+    <a class="wa" href="${wa}" target="_blank" rel="noopener">Send to ${esc(first)} on WhatsApp</a><button class="ghost" id="sCopy">Copy message</button><button class="ghost" id="sNext">Issue another ticket</button>`);
+  $('sCopy').onclick=async()=>{try{await navigator.clipboard.writeText(text);$('sCopy').textContent='Copied ✓'}catch(e){}};
+  $('sNext').onclick=()=>{delete $('ov').dataset.lock;closeS();$('fName').value='';$('fPhone').value='';$('fAmt').dataset.touched='';renderTypes();$('fName').focus()};
+  refresh()}
+
+/* ---------- resume session ---------- */
+if(EMAIL&&PIN){api({action:'issuer_login',email:EMAIL,pin:PIN}).then(r=>{if(r.ok)boot(r);else{sessionStorage.clear();$('lEmail').value=EMAIL}})}
+</script>
+</body>
+</html>

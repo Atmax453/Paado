@@ -208,7 +208,7 @@ tr.justnow td{animation:shflash 1.6s ease}
   <header>
     <div class="hin"><div class="logo">PAADO ISLAND<small>ADMIN</small></div><div class="evsw"><select id="evSel" aria-label="Event"></select></div><button class="mbtn" id="mMenu" aria-label="Menu">☰</button><div class="who" id="whoBox"><span id="who"></span><a href="./" target="_blank">View site ↗</a><a href="staff.html" target="_blank">Staff scanner ↗</a><button class="btn sm sun" id="logout">Sign out</button></div></div>
     <nav class="tabs" id="tabs">
-      <button data-t="events">Events</button><button data-t="dash" class="on">Dashboard</button><button data-t="orders">Orders</button><button data-t="issue">Issue ticket</button><button data-t="share">Share tickets</button>
+      <button data-t="events">Events</button><button data-t="dash" class="on">Dashboard</button><button data-t="orders">Orders</button><button data-t="issue">Issue ticket</button><button data-t="share">Share tickets</button><button data-t="issuers">Issuers</button>
       <button data-t="types">Ticket types</button><button data-t="staff">Staff</button><button data-t="settings">Event settings</button><button data-t="log">Check-ins</button>
     </nav>
   </header>
@@ -280,10 +280,11 @@ tr.justnow td{animation:shflash 1.6s ease}
 
     <!-- STAFF -->
     <section data-v="staff" class="hide">
-      <h1>Staff</h1><p class="sub">Add gate staff by email. They open <a href="staff.html" target="_blank"><b>staff.html</b></a>, sign in with that email, and create their own 6-digit PIN the first time.</p>
+      <h1>Staff</h1><p class="sub">Add gate staff and ticket issuers by email. Scanners open <a href="staff.html" target="_blank"><b>staff.html</b></a>, issuers open <a href="issuer.html" target="_blank"><b>issuer.html</b></a>. They sign in with that email and create their own 6-digit PIN the first time.</p>
       <div class="grid g2 staffg">
         <form class="card" id="staffF"><label>Staff name</label><input name="name" required placeholder="e.g. Kwame (Gate 1)"><label>Staff email</label><input name="email" type="email" required placeholder="kwame@email.com">
-          <label>Can scan at</label><div class="evchk" id="staffEvNew"></div>
+          <label>Role</label><select name="role"><option value="scanner">Gate scanner (scans tickets)</option><option value="issuer">Ticket issuer (issues tickets for cash)</option><option value="both">Both</option></select>
+          <label>Works at</label><div class="evchk" id="staffEvNew"></div>
           <button class="btn sun" style="margin-top:14px;width:100%">Add staff</button><div class="msg" id="staffMsg"></div></form>
         <div>
           <div class="row" style="margin-bottom:10px"><div><label>Show</label><select id="staffFilter"><option value="ev">Staff for this event</option><option value="all">All staff</option></select></div></div>
@@ -323,6 +324,15 @@ tr.justnow td{animation:shflash 1.6s ease}
     </section>
 
     <!-- LOG -->
+    <!-- ISSUERS -->
+    <section data-v="issuers" class="hide">
+      <div class="row"><div><h1>Ticket issuers</h1><p class="sub">Tickets issued by your issuers show as ₵0 in sales. The cash they confirmed receiving is tracked here so you can collect it.</p></div><div class="row right"><button class="btn ghost" onclick="loadIssuers()">↻ Refresh</button><button class="btn ghost" id="isCsv">Download CSV</button></div></div>
+      <div class="grid g4" id="isStats"></div>
+      <div class="types" id="isCards" style="margin-top:14px"></div>
+      <div class="row" style="margin-top:18px"><div><label>Issuer</label><select id="isWho"><option value="">All issuers</option></select></div><div><label>Show</label><select id="isShow"><option value="issued">Issued</option><option value="all">Issued + rejected</option><option value="declined">Rejected only</option><option value="open">Cash not handed in</option></select></div></div>
+      <div class="tw"><table><thead><tr><th>Time</th><th>Issuer</th><th>Guest</th><th>Ticket</th><th>Cash</th><th>Status</th></tr></thead><tbody id="isList"></tbody></table></div>
+    </section>
+
     <!-- SHARE -->
     <section data-v="share" class="hide">
       <div class="row"><div><h1>Share tickets</h1><p class="sub">Track which tickets you've sent or downloaded. Unsent tickets stay on top; whatever you just shared drops to the bottom.</p></div><div class="row right"><button class="btn ghost" onclick="loadShare()">↻ Refresh</button></div></div>
@@ -399,7 +409,7 @@ sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_IN'&&$('app').classList.contain
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('main section').forEach(s=>s.classList.toggle('hide',s.dataset.v!==b.dataset.t));
-  ({share:loadShare,events:renderEvents,dash:loadDash,orders:loadOrders,types:renderTypes,staff:loadStaff,settings:fillSettings,log:loadLog,issue:fillIssue})[b.dataset.t]?.()};
+  ({issuers:loadIssuers,share:loadShare,events:renderEvents,dash:loadDash,orders:loadOrders,types:renderTypes,staff:loadStaff,settings:fillSettings,log:loadLog,issue:fillIssue})[b.dataset.t]?.()};
 
 /* ---------- dashboard ---------- */
 async function loadDash(){$('dashSub').innerHTML=`<b>${esc(EV.name)}</b> · live numbers for online and admin-issued tickets.`;
@@ -701,7 +711,7 @@ window.editType=id=>{const t=TYPES.find(x=>x.id===id)||{name:'',slug:'',price:1,
 /* ---------- staff ---------- */
 let STAFF=[],ASSIGN=[],SEL=new Set();
 async function loadStaff(){
-  const [{data:st},{data:as}]=await Promise.all([sb.from('paado_staff').select('id,name,email,active,pin_hash,pin_set_at,last_seen,locked_until,created_at').order('created_at'),sb.from('paado_staff_events').select('staff_id,event_id')]);
+  const [{data:st},{data:as}]=await Promise.all([sb.from('paado_staff').select('id,name,email,active,role,pin_hash,pin_set_at,last_seen,locked_until,created_at').order('created_at'),sb.from('paado_staff_events').select('staff_id,event_id')]);
   STAFF=st||[];ASSIGN=as||[];
   $('staffEvNew').innerHTML=EVENTS.map(e=>`<label><input type="checkbox" value="${e.id}" ${e.id===EV.id?'checked':''}> ${esc(e.name)}</label>`).join('');
   $('bulkEv').innerHTML=EVENTS.map(e=>`<option value="${e.id}" ${e.id===EV.id?'selected':''}>${esc(e.name)}</option>`).join('');
@@ -712,12 +722,13 @@ function renderStaff(){
   const list=STAFF.filter(s=>!only||ASSIGN.some(a=>a.staff_id===s.id&&a.event_id===EV.id));
   $('staffList').innerHTML=list.map(s=>{const evs=ASSIGN.filter(a=>a.staff_id===s.id).map(a=>a.event_id);
     return `<tr><td><input type="checkbox" data-s="${s.id}" ${SEL.has(s.id)?'checked':''} style="width:auto"></td>
-    <td><b>${esc(s.name)}</b><div class="help">${esc(s.email||'no email (old PIN account)')}</div>${s.active?'':'<span class="pill p-failed">off</span>'}</td>
+    <td><b>${esc(s.name)}</b><div class="help">${esc(s.email||'no email (old PIN account)')}</div>${s.active?'':'<span class="pill p-failed">off</span>'}<select data-role="${s.id}" style="margin-top:6px;padding:6px 8px;font-size:.8rem;width:auto">${[['scanner','🎫 Gate scanner'],['issuer','💵 Ticket issuer'],['both','🎫💵 Both']].map(([v,l])=>`<option value="${v}" ${(s.role||'scanner')===v?'selected':''}>${l}</option>`).join('')}</select></td>
     <td><div class="chips">${evs.length?evs.map(id=>`<span class="chip">${esc(evName(id))}</span>`).join(''):'<span class="help">none</span>'}</div></td>
     <td>${s.pin_hash?`<span class="pill p-paid">set</span>`:'<span class="pill p-pending">not set yet</span>'}${s.locked_until&&new Date(s.locked_until)>new Date()?'<div class="help" style="color:var(--bad)">locked</div>':''}</td>
     <td>${s.last_seen?fmt(s.last_seen):'<span class="help">never</span>'}</td>
     <td style="white-space:nowrap"><button class="btn sm" onclick="staffEvents(${s.id})">Events</button> ${s.pin_hash?`<button class="btn sm ghost" onclick="resetPin(${s.id},'${esc(s.name)}')">Reset PIN</button> `:''}<button class="btn sm ghost" onclick="toggleStaff(${s.id},${!s.active})">${s.active?'Turn off':'Turn on'}</button> <button class="btn sm ghost" onclick="delStaff(${s.id},'${esc(s.name)}')">Delete</button></td></tr>`}).join('')||`<tr><td colspan="6">${only?'No staff assigned to this event yet. Switch "Show" to All staff to assign people.':'No staff yet.'}</td></tr>`;
   $('staffList').querySelectorAll('[data-s]').forEach(c=>c.onchange=()=>{c.checked?SEL.add(+c.dataset.s):SEL.delete(+c.dataset.s);bulkUI()});
+  $('staffList').querySelectorAll('[data-role]').forEach(c=>c.onchange=async()=>{const {error}=await sb.from('paado_staff').update({role:c.value}).eq('id',+c.dataset.role);if(error)return alert(error.message);const x=STAFF.find(z=>z.id===+c.dataset.role);if(x)x.role=c.value});
   $('staffAll').checked=list.length&&list.every(s=>SEL.has(s.id));bulkUI()}
 function bulkUI(){$('bulkBar').classList.toggle('on',SEL.size>0);$('bulkN').textContent=`${SEL.size} selected`}
 $('staffFilter').onchange=renderStaff;
@@ -736,16 +747,43 @@ window.staffEvents=id=>{const s=STAFF.find(x=>x.id===id);const mine=ASSIGN.filte
     if(rem.length){const {error}=await sb.from('paado_staff_events').delete().eq('staff_id',id).in('event_id',rem);if(error)return alert(error.message)}
     closeM();loadStaff()}};
 $('staffF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);
-  const row={name:f.get('name').trim(),email:f.get('email').trim().toLowerCase(),active:true};
+  const row={name:f.get('name').trim(),email:f.get('email').trim().toLowerCase(),active:true,role:f.get('role')||'scanner'};
   const evs=[...$('staffEvNew').querySelectorAll('input:checked')].map(i=>+i.value);
   const {data,error}=await sb.from('paado_staff').insert(row).select('id').single();
   if(error)return msg($('staffMsg'),/duplicate|unique/.test(error.message)?'That email is already on the staff list. Use its Events button to add events.':error.message);
   if(evs.length)await sb.from('paado_staff_events').insert(evs.map(ev=>({staff_id:data.id,event_id:ev})));
-  msg($('staffMsg'),`Added. Send ${row.name} this link: ${SITE}staff.html — they sign in with ${row.email} and create a PIN.`,true);e.target.reset();loadStaff()};
+  msg($('staffMsg'),`Added. Send ${row.name} this link: ${SITE}${row.role==='issuer'?'issuer.html':'staff.html'}${row.role==='both'?` (scanner) and ${SITE}issuer.html (issuer)`:''} — they sign in with ${row.email} and create a PIN.`,true);e.target.reset();loadStaff()};
 window.resetPin=async(id,n)=>{if(!confirm(`Reset ${n}'s PIN? They'll create a new one next time they sign in.`))return;
   await sb.from('paado_staff').update({pin_hash:null,pin_set_at:null,failed:0,locked_until:null}).eq('id',id);loadStaff()};
 window.toggleStaff=async(id,on)=>{await sb.from('paado_staff').update({active:on}).eq('id',id);loadStaff()};
 window.delStaff=async(id,n)=>{if(!confirm(`Delete staff ${n}? They won't be able to sign in. Their past scans stay in the log.`))return;await sb.from('paado_staff').delete().eq('id',id);loadStaff()};
+
+/* ---------- issuers accountability ---------- */
+let ISL=[];
+async function loadIssuers(){$('isList').innerHTML='<tr><td colspan="6">Loading…</td></tr>';
+  const {data,error}=await sb.from('paado_issue_log').select('*').eq('event_id',EV.id).order('created_at',{ascending:false}).limit(5000);
+  if(error){$('isList').innerHTML=`<tr><td colspan="6">${esc(error.message)}</td></tr>`;return}
+  ISL=data||[];const ivIds=ISL.filter(r=>r.invite_id&&!r.ticket_id).map(r=>r.invite_id);
+  if(ivIds.length){const {data:iv}=await sb.from('paado_invites').select('id,uses').in('id',ivIds);const u={};(iv||[]).forEach(v=>u[v.id]=v.uses>0);ISL.forEach(r=>{if(r.invite_id&&!r.ticket_id)r._claimed=!!u[r.invite_id]})}
+  const who=[...new Map(ISL.map(r=>[r.staff_email,r.staff_name])).entries()];
+  $('isWho').innerHTML='<option value="">All issuers</option>'+who.map(([e,n])=>`<option value="${esc(e)}">${esc(n)} · ${esc(e)}</option>`).join('');renderIssuers()}
+function renderIssuers(){
+  const iss=ISL.filter(r=>r.action!=='declined');const tot=iss.reduce((n,r)=>n+Number(r.amount),0),open=iss.filter(r=>!r.settled_at).reduce((n,r)=>n+Number(r.amount),0);
+  $('isStats').innerHTML=`<div class="stat"><b>${iss.length}</b><span>tickets issued</span></div><div class="stat"><b>${money(tot)}</b><span>cash declared</span></div><div class="stat"><b>${money(open)}</b><span>still with issuers</span></div><div class="stat"><b>${ISL.length-iss.length}</b><span>rejected attempts</span></div>`;
+  const by={};iss.forEach(r=>{const b=by[r.staff_email]=by[r.staff_email]||{name:r.staff_name,email:r.staff_email,n:0,cash:0,open:0,free:0};b.n++;b.cash+=Number(r.amount);if(!r.settled_at)b.open+=Number(r.amount);if(!Number(r.amount))b.free++});
+  $('isCards').innerHTML=Object.values(by).map(b=>`<div class="type"><div class="nm" style="font-size:1.3rem">${esc(b.name)}</div><div class="help">${esc(b.email)}</div>
+    <div class="row" style="margin:10px 0;gap:8px"><div class="stat" style="flex:1"><b style="font-size:1.4rem">${b.n}</b><span>issued${b.free?` (${b.free} free)`:''}</span></div><div class="stat" style="flex:1"><b style="font-size:1.4rem">${money(b.cash)}</b><span>declared</span></div><div class="stat" style="flex:1;${b.open?'background:#fff3e2':''}"><b style="font-size:1.4rem">${money(b.open)}</b><span>to collect</span></div></div>
+    ${b.open?`<button class="btn sm sun" onclick="settleIssuer('${esc(b.email)}',${b.open})">Mark ${money(b.open)} handed in</button>`:'<span class="pill p-paid">All cash handed in ✓</span>'}</div>`).join('')||'<p class="help">No tickets issued by issuers for this event yet. Make someone a Ticket issuer in the Staff tab.</p>';
+  const w=$('isWho').value,sh=$('isShow').value;
+  const L=ISL.filter(r=>(!w||r.staff_email===w)&&(sh==='all'||(sh==='declined'?r.action==='declined':sh==='open'?r.action!=='declined'&&!r.settled_at:r.action!=='declined')));
+  $('isList').innerHTML=L.map(r=>`<tr><td>${fmt(r.created_at)}</td><td>${esc(r.staff_name)}</td><td><b>${esc(r.guest_name)}</b><div class="help">${esc(r.guest_phone)}</div></td><td>${esc(r.type_name)}<div class="help">${r.action==='issued_link'?'one-time link':r.action==='issued_ticket'?'ticket sent':''}</div></td>
+    <td>${r.action==='declined'?'—':money(r.amount)}</td><td>${r.action==='declined'?'<span class="pill p-failed">Rejected · not issued</span>':`${r.action==='issued_link'?(r.ticket_id||r._claimed?'<span class="pill p-paid">Link used</span>':'<span class="pill p-pending">Link not used yet</span>'):'<span class="pill p-paid">Ticket issued</span>'}${Number(r.amount)?(r.settled_at?`<div class="help">handed in ${fmt(r.settled_at)}</div>`:'<div class="help" style="color:#9a6a00;font-weight:800">cash with issuer</div>'):''}`}</td></tr>`).join('')||'<tr><td colspan="6">Nothing here.</td></tr>'}
+['isWho','isShow'].forEach(id=>$(id).onchange=renderIssuers);
+window.settleIssuer=async(email,amt)=>{if(!confirm(`Confirm you've collected ${money(amt)} from ${email}?`))return;
+  const {error}=await sb.from('paado_issue_log').update({settled_at:new Date().toISOString(),settled_by:window.__me||'admin'}).eq('event_id',EV.id).eq('staff_email',email).neq('action','declined').is('settled_at',null);
+  if(error)return alert(error.message);loadIssuers()};
+$('isCsv').onclick=()=>{const out=['time,issuer,issuer_email,guest,phone,ticket,how,cash,status,handed_in'].concat(ISL.map(r=>[r.created_at,r.staff_name,r.staff_email,r.guest_name,r.guest_phone,r.type_name,r.action,r.action==='declined'?'':r.amount,r.action==='declined'?'rejected':'issued',r.settled_at||''].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','))).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='paado-issuers.csv';a.click()};
 
 /* ---------- share tracking ---------- */
 let SH=[],SHSEG='todo',SHSEL=new Set(),SHJUST=null;
@@ -965,10 +1003,11 @@ new MutationObserver(()=>{clearTimeout(window.__lt);window.__lt=setTimeout(label
 $('mMenu').onclick=e=>{e.stopPropagation();$('whoBox').classList.toggle('open')};
 document.addEventListener('click',e=>{if(!e.target.closest('#whoBox'))$('whoBox').classList.remove('open')});
 function goTab(t){const b=document.querySelector(`#tabs button[data-t="${t}"]`);if(b)b.click();
-  document.querySelectorAll('#bnav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t||(x.dataset.t==='more'&&['share','events','types','staff','settings'].includes(t))));scrollTo(0,0)}
+  document.querySelectorAll('#bnav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t||(x.dataset.t==='more'&&['issuers','share','events','types','staff','settings'].includes(t))));scrollTo(0,0)}
 $('bnav').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.t==='more'){openM(`<h2 style="margin-top:0">More</h2><div style="display:grid;gap:10px">
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('share')">📤&nbsp; Share tickets</button>
+    <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('issuers')">💵&nbsp; Ticket issuers</button>
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('events')">📅&nbsp; Events</button>
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('types')">🎟️&nbsp; Ticket types</button>
     <button class="btn ghost" style="justify-content:flex-start;padding:16px" onclick="closeM();goTab('staff')">👥&nbsp; Staff</button>
