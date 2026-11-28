@@ -76,6 +76,15 @@ input.in:focus,select.in:focus{outline:none;border-color:var(--sun)}
 .no{width:100%;padding:15px;border:2px solid var(--bad);border-radius:16px;background:none;color:var(--bad);font:800 1rem var(--body);margin-top:10px}
 .wa{display:block;text-align:center;text-decoration:none;width:100%;padding:17px;border-radius:16px;background:#25d366;color:#05301a;font:800 1.08rem var(--body);margin-top:10px}
 .ghost{width:100%;padding:15px;border:1.5px solid var(--line);border-radius:16px;background:#fff;color:var(--ink);font:800 1rem var(--body);margin-top:10px}
+.appr{background:#fff;border:2px solid var(--sun);border-radius:22px;padding:16px;margin-bottom:14px}
+.appr h2{font-size:1.25rem;display:flex;align-items:center;gap:8px}.appr h2 i{background:var(--sun);color:#fff;border-radius:999px;font-style:normal;font-family:var(--body);font-size:.8rem;padding:2px 9px}
+.rq{border:1px solid var(--line);border-radius:16px;padding:12px;margin-top:10px;background:var(--paper)}
+.rq .why{background:#fff6e8;border-left:4px solid var(--sun-2);padding:8px 10px;border-radius:8px;margin:8px 0;font-weight:600;white-space:pre-wrap}
+.rq .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.rq .row2 button{padding:13px;border-radius:12px;border:0;font:800 .95rem var(--body)}
+.rq .ok{background:var(--ok);color:#fff}.rq .rj{background:#fff;border:2px solid var(--bad)!important;color:var(--bad)}
+.lvl{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.12em;padding:2px 8px;border-radius:999px;background:var(--sun-2);color:var(--ink);margin-top:3px}
+textarea.in{width:100%;min-height:90px;padding:13px;border:1.5px solid var(--line);border-radius:14px;font:600 16px var(--body);background:#fff;resize:vertical}
+.timer{font-family:var(--display);font-size:3rem;text-align:center;color:var(--sun);line-height:1;margin:10px 0}
 .lk{word-break:break-all;font-family:ui-monospace,Menlo,monospace;font-size:.85rem;background:#f4ede0;border-radius:12px;padding:10px;margin-top:8px}
 </style>
 </head>
@@ -96,6 +105,8 @@ input.in:focus,select.in:focus{outline:none;border-color:var(--sun)}
 <section id="vApp" class="hide">
   <header><div class="hrow"><div class="logo">PAADO ISLAND<small>TICKET ISSUER</small></div><div class="who"><div id="hName"></div><button id="hOut">Sign out</button></div></div></header>
   <main>
+    <div class="appr hide" id="apprBox"><h2>Free tickets to approve <i id="apprN">0</i></h2><div id="apprList"></div></div>
+    <p id="minorNote" class="hide" style="background:#fff3d6;border-radius:14px;padding:10px 12px;font-weight:700;font-size:.88rem;margin-bottom:12px"></p>
     <div class="stats"><div class="stat cash"><b id="sHeld">₵0</b><span>Cash you're holding</span></div><div class="stat"><b id="sIssued">0</b><span>Tickets you've issued</span></div></div>
     <div class="card">
       <h2>Issue a ticket</h2>
@@ -143,7 +154,9 @@ $('lGo').onclick=async()=>{const p=$('lPin').value.replace(/\D/g,'');$('lErr').t
 $('hOut').onclick=()=>{sessionStorage.removeItem('pi_email');sessionStorage.removeItem('pi_pin');location.reload()};
 
 /* ---------- app ---------- */
-function boot(r){DATA=r;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').textContent=r.name;
+function boot(r){DATA=r;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('hName').innerHTML=esc(r.name)+`<br><span class="lvl">${r.level==='minor'?'MINOR ISSUER':'MAJOR ISSUER'}</span>`;
+  $('minorNote').classList.toggle('hide',r.level!=='minor');if(r.level==='minor')$('minorNote').textContent=`Free tickets (₵0) need approval${r.supervisor?' from '+r.supervisor+' first':' from a major issuer'}. Paid tickets go out straight away.`;
+  if(r.level==='major'){renderPending(r.pending||[]);clearInterval(window.__pp);window.__pp=setInterval(pollPending,4000)}
   const keep=+$('fEv').value;$('fEv').innerHTML=r.events.map(e=>`<option value="${e.id}">${esc(e.name)}${e.status==='test'?' (TEST)':''}</option>`).join('');
   if(r.events.some(e=>e.id===keep))$('fEv').value=keep;$('evW').classList.toggle('hide',r.events.length<2);renderTypes();renderStats()}
 function curEv(){return DATA.events.find(e=>e.id===+$('fEv').value)||DATA.events[0]}
@@ -156,8 +169,8 @@ $('fAmt').oninput=()=>{$('fAmt').dataset.touched='1'};
 $('fMode').querySelectorAll('button').forEach(b=>b.onclick=()=>{MODE=b.dataset.m;$('fMode').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))});
 function renderStats(){const s=DATA.stats;$('sHeld').textContent=cedi(s.cash_held);$('sIssued').textContent=s.issued;
   $('hist').innerHTML=(DATA.history||[]).map(h=>{const t=new Date(h.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    const st=h.action==='declined'?'<span class="tag t-no">REJECTED · not issued</span>':h.action==='issued_link'?(h.claimed?'<span class="tag t-ok">LINK USED ✓</span>':'<span class="tag t-wait">LINK NOT OPENED YET</span>'):'<span class="tag t-ok">TICKET SENT</span>';
-    return `<div class="hi"><div><b>${esc(h.name)}</b><small>${esc(h.type)} · ${esc(h.phone)} · ${t}</small><br>${st}${h.settled?' <span class="tag t-set">HANDED IN</span>':''}</div><div class="amt">${h.action==='declined'?'—':cedi(h.amount)}</div></div>`}).join('')||'<p style="color:var(--muted);font-weight:600;padding:10px 0">Nothing issued yet.</p>'}
+    const st=h.action==='refused'?`<span class="tag t-no">FREE TICKET REFUSED${h.approved_by?' by '+esc(h.approved_by):''}</span>`:h.action==='declined'?'<span class="tag t-no">REJECTED · not issued</span>':h.action==='issued_link'?(h.claimed?'<span class="tag t-ok">LINK USED ✓</span>':'<span class="tag t-wait">LINK NOT OPENED YET</span>'):'<span class="tag t-ok">TICKET SENT</span>';
+    return `<div class="hi"><div><b>${esc(h.name)}</b><small>${esc(h.type)} · ${esc(h.phone)} · ${t}</small><br>${st}${h.settled?' <span class="tag t-set">HANDED IN</span>':''}${h.approved_by&&h.action!=='refused'?` <span class="tag t-set">APPROVED BY ${esc(h.approved_by)}</span>`:''}${h.reason?`<br><small>Reason: ${esc(h.reason)}</small>`:''}</div><div class="amt">${h.action==='declined'||h.action==='refused'?'—':h.amount?cedi(h.amount):'FREE'}</div></div>`}).join('')||'<p style="color:var(--muted);font-weight:600;padding:10px 0">Nothing issued yet.</p>'}
 async function refresh(){const r=await api({action:'issuer_history',email:EMAIL,pin:PIN});if(r.ok){DATA.stats=r.stats;DATA.history=r.history;renderStats()}else if(r.relogin)$('hOut').click()}
 
 /* ---------- issue flow ---------- */
@@ -173,16 +186,20 @@ $('fGo').onclick=()=>{$('fMsg').textContent='';const ev=curEv(),t=ev.types.find(
   const free=amt===0;$('ov').dataset.lock='1';
   openS(`<h3>${free?'Free ticket?':'Did you receive the money?'}</h3>
     <div class="oath">${free?`<span class="big2">FREE</span>I confirm this is a <u>free</u> ${esc(t.name)} ticket for <b>${esc(name)}</b> (${esc(phone)}) and I take responsibility for giving it out.`:`<span class="big2">${cedi(amt)}</span>I, <b>${esc(DATA.name)}</b>, confirm I have <u>received ${cedi(amt)}</u> from <b>${esc(name)}</b> (${esc(phone)}) for 1 × ${esc(t.name)}. I am responsible for handing this money to the organisers.`}</div>
+    ${free?`<label style="margin-top:4px">Reason / purpose${DATA.level==='minor'?' (required)':' (optional)'}</label><textarea class="in" id="cWhy" maxlength="500" placeholder="Who is this for and why is it free? e.g. Sponsor rep from Triangle, media from Y FM"></textarea>${DATA.level==='minor'?`<p style="font-size:.85rem;font-weight:700;margin-top:6px">A major issuer must approve this before the ticket is created.</p>`:''}`:''}
     <p style="font-size:.85rem;color:var(--muted);font-weight:600">This is recorded with your name and the time.${!free&&t.price&&amt<t.price?` Note: the normal price is ${cedi(t.price)}.`:''}</p>
-    <button class="yes" id="cYes">${free?'Yes, issue free ticket':'Yes, I received '+cedi(amt)}</button><button class="no" id="cNo">No, I haven't received it</button>`);
+    <button class="yes" id="cYes">${free?(DATA.level==='minor'?'Send for approval':'Yes, issue free ticket'):'Yes, I received '+cedi(amt)}</button><button class="no" id="cNo">${free?'Cancel':"No, I haven't received it"}</button>`);
   $('cNo').onclick=async()=>{$('cNo').disabled=true;await api({action:'issuer_decline',email:EMAIL,pin:PIN,...req});
     openS(`<h3>Rejected</h3><p style="font-weight:600">Nothing was issued. Collect the money first, then try again.</p><button class="ghost" id="cOk">OK</button>`);$('cOk').onclick=()=>{delete $('ov').dataset.lock;closeS()};refresh()};
-  $('cYes').onclick=()=>issue(req,false)};
+  $('cYes').onclick=()=>{if(free){const why=($('cWhy').value||'').trim();if(DATA.level==='minor'&&why.length<5){$('cWhy').style.borderColor='var(--bad)';$('cWhy').focus();return}req.reason=why}issue(req,false)}};
 async function issue(req,force){$('sheet').querySelectorAll('button').forEach(b=>b.disabled=true);
   const r=await api({action:'issuer_issue',email:EMAIL,pin:PIN,...req,confirm:true,force});
   if(r.duplicate){openS(`<h3>Already has a ticket</h3><p style="font-weight:600;line-height:1.45">${esc(r.duplicate.name)} (${esc(req.phone)}) already has a <b>${esc(r.duplicate.tier)}</b> ticket for this event (${esc(r.duplicate.code)}).</p><button class="yes" id="dYes">Issue another anyway</button><button class="no" id="dNo">Cancel</button>`);
     $('dYes').onclick=()=>issue(req,true);$('dNo').onclick=()=>{delete $('ov').dataset.lock;closeS()};return}
+  if(r.ok&&r.pending)return waitApproval(r.request_id,req);
   if(!r.ok){if(r.relogin)return $('hOut').click();openS(`<h3>Not issued</h3><p style="font-weight:600">${esc(r.error||'Something went wrong.')}</p><button class="ghost" id="eOk">OK</button>`);$('eOk').onclick=()=>{delete $('ov').dataset.lock;closeS()};return}
+  showDone(r)}
+function showDone(r){$('ov').dataset.lock='1';
   const first=r.name.split(' ')[0];
   const text=r.mode==='link'?`Hi ${first}, here's your personal Paado Island Experience ticket link 🌴\n${r.link}\nOpen it and tap "Get my ticket". It works once, so don't share it.`:`Hi ${first}, here's your Paado Island Experience ticket 🌴\n${r.link}\nShow the QR code at the gate. See you on the island!`;
   const wa='https://wa.me/233'+r.phone.slice(1)+'?text='+encodeURIComponent(text);
@@ -191,6 +208,35 @@ async function issue(req,force){$('sheet').querySelectorAll('button').forEach(b=
   $('sCopy').onclick=async()=>{try{await navigator.clipboard.writeText(text);$('sCopy').textContent='Copied ✓'}catch(e){}};
   $('sNext').onclick=()=>{delete $('ov').dataset.lock;closeS();$('fName').value='';$('fPhone').value='';$('fAmt').dataset.touched='';renderTypes();$('fName').focus()};
   refresh()}
+
+/* ---------- minor: wait for a major to approve ---------- */
+function waitApproval(id,req){let stop=false;
+  const draw=st=>{openS(`<h3>Waiting for approval</h3><p style="font-weight:600">Free ${esc(req.name)} ticket · reason sent to ${st&&st.open_to_all?'<b>all major issuers</b>':(DATA.supervisor?'<b>'+esc(DATA.supervisor)+'</b>':'<b>major issuers</b>')}.</p>
+    <div class="timer">${st&&!st.open_to_all?st.secs_left+'s':'⏳'}</div><p style="text-align:center;font-weight:700;color:var(--muted)">${st&&!st.open_to_all?`Only ${esc(DATA.supervisor||'your major')} can approve for now. After that, any major issuer can.`:'Any major issuer can approve it now. Keep this screen open.'}</p>
+    <button class="no" id="wCancel">Cancel request</button>`);
+    $('wCancel').onclick=async()=>{stop=true;await api({action:'issuer_request_cancel',email:EMAIL,pin:PIN,request_id:id});delete $('ov').dataset.lock;closeS();refresh()}};
+  draw({open_to_all:false,secs_left:30});
+  const tick=async()=>{if(stop)return;const st=await api({action:'issuer_request_status',email:EMAIL,pin:PIN,request_id:id});if(stop)return;
+    if(st.status==='approved'&&st.link){stop=true;buzz();return showDone({mode:st.mode,link:st.link,name:st.name,phone:st.phone,type:st.type+' (approved by '+st.by+')'})}
+    if(st.status==='rejected'){stop=true;openS(`<h3>Not approved</h3><p style="font-weight:600">${esc(st.by||'A major issuer')} refused this free ticket.${st.note?'<br><br>“'+esc(st.note)+'”':''}</p><button class="ghost" id="rOk">OK</button>`);$('rOk').onclick=()=>{delete $('ov').dataset.lock;closeS()};refresh();return}
+    if(st.status==='cancelled'){stop=true;return}
+    if(st.ok&&!$('ov').classList.contains('hide'))draw(st);setTimeout(tick,2500)};
+  setTimeout(tick,1500)}
+function buzz(){try{navigator.vibrate&&navigator.vibrate([120,60,120])}catch(e){}try{const c=new (window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.frequency.value=880;o.connect(g);g.connect(c.destination);g.gain.value=.08;o.start();o.stop(c.currentTime+.18)}catch(e){}}
+
+/* ---------- major: approve free tickets from minors ---------- */
+let SEEN=new Set();
+function renderPending(list){$('apprBox').classList.toggle('hide',!list.length);$('apprN').textContent=list.length;
+  if(list.some(x=>!SEEN.has(x.id))&&SEEN.size>=0&&window.__ppReady)buzz();list.forEach(x=>SEEN.add(x.id));window.__ppReady=true;
+  $('apprList').innerHTML=list.map(x=>`<div class="rq"><b>${esc(x.from)}</b> wants to give a <b>free ${esc(x.type)}</b> to <b>${esc(x.guest)}</b> · ${esc(x.phone)}
+    <div class="why">${esc(x.reason)}</div><small style="font-weight:700;color:var(--muted)">${x.open_to_all?(x.mine?'Your minor issuer · now open to all majors':'Open to all major issuers'):`For you only · ${x.secs_left}s before all majors see it`} · ${x.mode==='link'?'one-time link':'ticket'}</small>
+    <div class="row2"><button class="ok" data-a="${x.id}">Approve</button><button class="rj" data-r="${x.id}">Refuse</button></div></div>`).join('');
+  $('apprList').querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>decide(+b.dataset.a,true,b));
+  $('apprList').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const note=prompt('Reason for refusing (optional):','');if(note===null)return;decide(+b.dataset.r,false,b,note)})}
+async function decide(id,approve,btn,note){btn.disabled=true;btn.textContent=approve?'Approving…':'Refusing…';
+  const r=await api({action:'issuer_decide',email:EMAIL,pin:PIN,request_id:id,approve,note:note||''});
+  if(!r.ok)alert(r.error||'Could not save.');pollPending()}
+async function pollPending(){if(document.hidden||!DATA||DATA.level!=='major')return;const r=await api({action:'issuer_pending',email:EMAIL,pin:PIN});if(r.ok)renderPending(r.pending||[]);else if(r.relogin)$('hOut').click()}
 
 /* ---------- resume session ---------- */
 if(EMAIL&&PIN){api({action:'issuer_login',email:EMAIL,pin:PIN}).then(r=>{if(r.ok)boot(r);else{sessionStorage.clear();$('lEmail').value=EMAIL}})}

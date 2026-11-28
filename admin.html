@@ -284,6 +284,8 @@ tr.justnow td{animation:shflash 1.6s ease}
       <div class="grid g2 staffg">
         <form class="card" id="staffF"><label>Staff name</label><input name="name" required placeholder="e.g. Kwame (Gate 1)"><label>Staff email</label><input name="email" type="email" required placeholder="kwame@email.com">
           <label>Role</label><select name="role"><option value="scanner">Gate scanner (scans tickets)</option><option value="issuer">Ticket issuer (issues tickets for cash)</option><option value="both">Both</option></select>
+          <div id="lvlW" class="hide"><label>Issuer level</label><select name="level"><option value="major">Major: issues anything, approves free tickets</option><option value="minor">Minor: free tickets need a major's approval</option></select>
+          <div id="supW" class="hide"><label>Approved by (major issuer)</label><select name="sup" id="supNew"></select></div></div>
           <label>Works at</label><div class="evchk" id="staffEvNew"></div>
           <button class="btn sun" style="margin-top:14px;width:100%">Add staff</button><div class="msg" id="staffMsg"></div></form>
         <div>
@@ -329,7 +331,7 @@ tr.justnow td{animation:shflash 1.6s ease}
       <div class="row"><div><h1>Ticket issuers</h1><p class="sub">Tickets issued by your issuers show as ₵0 in sales. The cash they confirmed receiving is tracked here so you can collect it.</p></div><div class="row right"><button class="btn ghost" onclick="loadIssuers()">↻ Refresh</button><button class="btn ghost" id="isCsv">Download CSV</button></div></div>
       <div class="grid g4" id="isStats"></div>
       <div class="types" id="isCards" style="margin-top:14px"></div>
-      <div class="row" style="margin-top:18px"><div><label>Issuer</label><select id="isWho"><option value="">All issuers</option></select></div><div><label>Show</label><select id="isShow"><option value="issued">Issued</option><option value="all">Issued + rejected</option><option value="declined">Rejected only</option><option value="open">Cash not handed in</option></select></div></div>
+      <div class="row" style="margin-top:18px"><div><label>Issuer</label><select id="isWho"><option value="">All issuers</option></select></div><div><label>Show</label><select id="isShow"><option value="issued">Issued</option><option value="all">Issued + rejected</option><option value="declined">Rejected / refused only</option><option value="open">Cash not handed in</option></select></div></div>
       <div class="tw"><table><thead><tr><th>Time</th><th>Issuer</th><th>Guest</th><th>Ticket</th><th>Cash</th><th>Status</th></tr></thead><tbody id="isList"></tbody></table></div>
     </section>
 
@@ -711,9 +713,12 @@ window.editType=id=>{const t=TYPES.find(x=>x.id===id)||{name:'',slug:'',price:1,
 /* ---------- staff ---------- */
 let STAFF=[],ASSIGN=[],SEL=new Set();
 async function loadStaff(){
-  const [{data:st},{data:as}]=await Promise.all([sb.from('paado_staff').select('id,name,email,active,role,pin_hash,pin_set_at,last_seen,locked_until,created_at').order('created_at'),sb.from('paado_staff_events').select('staff_id,event_id')]);
+  const [{data:st},{data:as}]=await Promise.all([sb.from('paado_staff').select('id,name,email,active,role,issuer_level,supervisor_id,pin_hash,pin_set_at,last_seen,locked_until,created_at').order('created_at'),sb.from('paado_staff_events').select('staff_id,event_id')]);
   STAFF=st||[];ASSIGN=as||[];
   $('staffEvNew').innerHTML=EVENTS.map(e=>`<label><input type="checkbox" value="${e.id}" ${e.id===EV.id?'checked':''}> ${esc(e.name)}</label>`).join('');
+  const majors=STAFF.filter(x=>(x.role==='issuer'||x.role==='both')&&x.issuer_level!=='minor');
+  $('supNew').innerHTML='<option value="">Any major issuer</option>'+majors.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  const sf=$('staffF');const tg=()=>{const iss=sf.role.value!=='scanner';$('lvlW').classList.toggle('hide',!iss);$('supW').classList.toggle('hide',!(iss&&sf.level.value==='minor'))};sf.role.onchange=tg;sf.level.onchange=tg;tg();
   $('bulkEv').innerHTML=EVENTS.map(e=>`<option value="${e.id}" ${e.id===EV.id?'selected':''}>${esc(e.name)}</option>`).join('');
   renderStaff()}
 const evName=id=>(EVENTS.find(e=>e.id===id)||{}).name||'Event '+id;
@@ -722,13 +727,15 @@ function renderStaff(){
   const list=STAFF.filter(s=>!only||ASSIGN.some(a=>a.staff_id===s.id&&a.event_id===EV.id));
   $('staffList').innerHTML=list.map(s=>{const evs=ASSIGN.filter(a=>a.staff_id===s.id).map(a=>a.event_id);
     return `<tr><td><input type="checkbox" data-s="${s.id}" ${SEL.has(s.id)?'checked':''} style="width:auto"></td>
-    <td><b>${esc(s.name)}</b><div class="help">${esc(s.email||'no email (old PIN account)')}</div>${s.active?'':'<span class="pill p-failed">off</span>'}<select data-role="${s.id}" style="margin-top:6px;padding:6px 8px;font-size:.8rem;width:auto">${[['scanner','🎫 Gate scanner'],['issuer','💵 Ticket issuer'],['both','🎫💵 Both']].map(([v,l])=>`<option value="${v}" ${(s.role||'scanner')===v?'selected':''}>${l}</option>`).join('')}</select></td>
+    <td><b>${esc(s.name)}</b><div class="help">${esc(s.email||'no email (old PIN account)')}</div>${s.active?'':'<span class="pill p-failed">off</span>'}<select data-role="${s.id}" style="margin-top:6px;padding:6px 8px;font-size:.8rem;width:auto">${[['scanner','🎫 Gate scanner'],['issuer','💵 Ticket issuer'],['both','🎫💵 Both']].map(([v,l])=>`<option value="${v}" ${(s.role||'scanner')===v?'selected':''}>${l}</option>`).join('')}</select>${s.role==='issuer'||s.role==='both'?`<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap"><select data-lvl="${s.id}" style="padding:6px 8px;font-size:.8rem;width:auto"><option value="major" ${s.issuer_level!=='minor'?'selected':''}>⭐ Major</option><option value="minor" ${s.issuer_level==='minor'?'selected':''}>Minor</option></select>${s.issuer_level==='minor'?`<select data-sup="${s.id}" style="padding:6px 8px;font-size:.8rem;width:auto" title="Major who approves first"><option value="">Approver: any major</option>${STAFF.filter(m=>m.id!==s.id&&(m.role==='issuer'||m.role==='both')&&m.issuer_level!=='minor').map(m=>`<option value="${m.id}" ${s.supervisor_id===m.id?'selected':''}>Approver: ${esc(m.name)}</option>`).join('')}</select>`:''}</div>`:''}</td>
     <td><div class="chips">${evs.length?evs.map(id=>`<span class="chip">${esc(evName(id))}</span>`).join(''):'<span class="help">none</span>'}</div></td>
     <td>${s.pin_hash?`<span class="pill p-paid">set</span>`:'<span class="pill p-pending">not set yet</span>'}${s.locked_until&&new Date(s.locked_until)>new Date()?'<div class="help" style="color:var(--bad)">locked</div>':''}</td>
     <td>${s.last_seen?fmt(s.last_seen):'<span class="help">never</span>'}</td>
     <td style="white-space:nowrap"><button class="btn sm" onclick="staffEvents(${s.id})">Events</button> ${s.pin_hash?`<button class="btn sm ghost" onclick="resetPin(${s.id},'${esc(s.name)}')">Reset PIN</button> `:''}<button class="btn sm ghost" onclick="toggleStaff(${s.id},${!s.active})">${s.active?'Turn off':'Turn on'}</button> <button class="btn sm ghost" onclick="delStaff(${s.id},'${esc(s.name)}')">Delete</button></td></tr>`}).join('')||`<tr><td colspan="6">${only?'No staff assigned to this event yet. Switch "Show" to All staff to assign people.':'No staff yet.'}</td></tr>`;
   $('staffList').querySelectorAll('[data-s]').forEach(c=>c.onchange=()=>{c.checked?SEL.add(+c.dataset.s):SEL.delete(+c.dataset.s);bulkUI()});
-  $('staffList').querySelectorAll('[data-role]').forEach(c=>c.onchange=async()=>{const {error}=await sb.from('paado_staff').update({role:c.value}).eq('id',+c.dataset.role);if(error)return alert(error.message);const x=STAFF.find(z=>z.id===+c.dataset.role);if(x)x.role=c.value});
+  $('staffList').querySelectorAll('[data-role]').forEach(c=>c.onchange=async()=>{const {error}=await sb.from('paado_staff').update({role:c.value}).eq('id',+c.dataset.role);if(error)return alert(error.message);loadStaff()});
+  $('staffList').querySelectorAll('[data-lvl]').forEach(c=>c.onchange=async()=>{const {error}=await sb.from('paado_staff').update({issuer_level:c.value,...(c.value==='major'?{supervisor_id:null}:{})}).eq('id',+c.dataset.lvl);if(error)return alert(error.message);loadStaff()});
+  $('staffList').querySelectorAll('[data-sup]').forEach(c=>c.onchange=async()=>{const {error}=await sb.from('paado_staff').update({supervisor_id:c.value?+c.value:null}).eq('id',+c.dataset.sup);if(error)return alert(error.message);loadStaff()});
   $('staffAll').checked=list.length&&list.every(s=>SEL.has(s.id));bulkUI()}
 function bulkUI(){$('bulkBar').classList.toggle('on',SEL.size>0);$('bulkN').textContent=`${SEL.size} selected`}
 $('staffFilter').onchange=renderStaff;
@@ -747,7 +754,7 @@ window.staffEvents=id=>{const s=STAFF.find(x=>x.id===id);const mine=ASSIGN.filte
     if(rem.length){const {error}=await sb.from('paado_staff_events').delete().eq('staff_id',id).in('event_id',rem);if(error)return alert(error.message)}
     closeM();loadStaff()}};
 $('staffF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);
-  const row={name:f.get('name').trim(),email:f.get('email').trim().toLowerCase(),active:true,role:f.get('role')||'scanner'};
+  const row={name:f.get('name').trim(),email:f.get('email').trim().toLowerCase(),active:true,role:f.get('role')||'scanner',issuer_level:f.get('level')||'major',supervisor_id:f.get('level')==='minor'&&f.get('sup')?+f.get('sup'):null};
   const evs=[...$('staffEvNew').querySelectorAll('input:checked')].map(i=>+i.value);
   const {data,error}=await sb.from('paado_staff').insert(row).select('id').single();
   if(error)return msg($('staffMsg'),/duplicate|unique/.test(error.message)?'That email is already on the staff list. Use its Events button to add events.':error.message);
@@ -768,21 +775,21 @@ async function loadIssuers(){$('isList').innerHTML='<tr><td colspan="6">Loading�
   const who=[...new Map(ISL.map(r=>[r.staff_email,r.staff_name])).entries()];
   $('isWho').innerHTML='<option value="">All issuers</option>'+who.map(([e,n])=>`<option value="${esc(e)}">${esc(n)} · ${esc(e)}</option>`).join('');renderIssuers()}
 function renderIssuers(){
-  const iss=ISL.filter(r=>r.action!=='declined');const tot=iss.reduce((n,r)=>n+Number(r.amount),0),open=iss.filter(r=>!r.settled_at).reduce((n,r)=>n+Number(r.amount),0);
-  $('isStats').innerHTML=`<div class="stat"><b>${iss.length}</b><span>tickets issued</span></div><div class="stat"><b>${money(tot)}</b><span>cash declared</span></div><div class="stat"><b>${money(open)}</b><span>still with issuers</span></div><div class="stat"><b>${ISL.length-iss.length}</b><span>rejected attempts</span></div>`;
+  const iss=ISL.filter(r=>r.action==='issued_ticket'||r.action==='issued_link');const tot=iss.reduce((n,r)=>n+Number(r.amount),0),open=iss.filter(r=>!r.settled_at).reduce((n,r)=>n+Number(r.amount),0);
+  $('isStats').innerHTML=`<div class="stat"><b>${iss.length}</b><span>tickets issued</span></div><div class="stat"><b>${money(tot)}</b><span>cash declared</span></div><div class="stat"><b>${money(open)}</b><span>still with issuers</span></div><div class="stat"><b>${ISL.length-iss.length}</b><span>rejected / refused</span></div>`;
   const by={};iss.forEach(r=>{const b=by[r.staff_email]=by[r.staff_email]||{name:r.staff_name,email:r.staff_email,n:0,cash:0,open:0,free:0};b.n++;b.cash+=Number(r.amount);if(!r.settled_at)b.open+=Number(r.amount);if(!Number(r.amount))b.free++});
   $('isCards').innerHTML=Object.values(by).map(b=>`<div class="type"><div class="nm" style="font-size:1.3rem">${esc(b.name)}</div><div class="help">${esc(b.email)}</div>
     <div class="row" style="margin:10px 0;gap:8px"><div class="stat" style="flex:1"><b style="font-size:1.4rem">${b.n}</b><span>issued${b.free?` (${b.free} free)`:''}</span></div><div class="stat" style="flex:1"><b style="font-size:1.4rem">${money(b.cash)}</b><span>declared</span></div><div class="stat" style="flex:1;${b.open?'background:#fff3e2':''}"><b style="font-size:1.4rem">${money(b.open)}</b><span>to collect</span></div></div>
     ${b.open?`<button class="btn sm sun" onclick="settleIssuer('${esc(b.email)}',${b.open})">Mark ${money(b.open)} handed in</button>`:'<span class="pill p-paid">All cash handed in ✓</span>'}</div>`).join('')||'<p class="help">No tickets issued by issuers for this event yet. Make someone a Ticket issuer in the Staff tab.</p>';
   const w=$('isWho').value,sh=$('isShow').value;
-  const L=ISL.filter(r=>(!w||r.staff_email===w)&&(sh==='all'||(sh==='declined'?r.action==='declined':sh==='open'?r.action!=='declined'&&!r.settled_at:r.action!=='declined')));
+  const L=ISL.filter(r=>(!w||r.staff_email===w)&&(sh==='all'||(sh==='declined'?(r.action==='declined'||r.action==='refused'):sh==='open'?r.action.startsWith('issued')&&Number(r.amount)>0&&!r.settled_at:r.action.startsWith('issued'))));
   $('isList').innerHTML=L.map(r=>`<tr><td>${fmt(r.created_at)}</td><td>${esc(r.staff_name)}</td><td><b>${esc(r.guest_name)}</b><div class="help">${esc(r.guest_phone)}</div></td><td>${esc(r.type_name)}<div class="help">${r.action==='issued_link'?'one-time link':r.action==='issued_ticket'?'ticket sent':''}</div></td>
-    <td>${r.action==='declined'?'—':money(r.amount)}</td><td>${r.action==='declined'?'<span class="pill p-failed">Rejected · not issued</span>':`${r.action==='issued_link'?(r.ticket_id||r._claimed?'<span class="pill p-paid">Link used</span>':'<span class="pill p-pending">Link not used yet</span>'):'<span class="pill p-paid">Ticket issued</span>'}${Number(r.amount)?(r.settled_at?`<div class="help">handed in ${fmt(r.settled_at)}</div>`:'<div class="help" style="color:#9a6a00;font-weight:800">cash with issuer</div>'):''}`}</td></tr>`).join('')||'<tr><td colspan="6">Nothing here.</td></tr>'}
+    <td>${r.action==='declined'||r.action==='refused'?'—':Number(r.amount)?money(r.amount):'FREE'}${r.reason?`<div class="help" style="max-width:220px">Reason: ${esc(r.reason)}</div>`:''}${r.approved_by?`<div class="help">${r.action==='refused'?'Refused':'Approved'} by ${esc(r.approved_by)}</div>`:''}</td><td>${r.action==='refused'?'<span class="pill p-failed">Free ticket refused</span>':r.action==='declined'?'<span class="pill p-failed">Rejected · not issued</span>':`${r.action==='issued_link'?(r.ticket_id||r._claimed?'<span class="pill p-paid">Link used</span>':'<span class="pill p-pending">Link not used yet</span>'):'<span class="pill p-paid">Ticket issued</span>'}${Number(r.amount)?(r.settled_at?`<div class="help">handed in ${fmt(r.settled_at)}</div>`:'<div class="help" style="color:#9a6a00;font-weight:800">cash with issuer</div>'):''}`}</td></tr>`).join('')||'<tr><td colspan="6">Nothing here.</td></tr>'}
 ['isWho','isShow'].forEach(id=>$(id).onchange=renderIssuers);
 window.settleIssuer=async(email,amt)=>{if(!confirm(`Confirm you've collected ${money(amt)} from ${email}?`))return;
   const {error}=await sb.from('paado_issue_log').update({settled_at:new Date().toISOString(),settled_by:window.__me||'admin'}).eq('event_id',EV.id).eq('staff_email',email).neq('action','declined').is('settled_at',null);
   if(error)return alert(error.message);loadIssuers()};
-$('isCsv').onclick=()=>{const out=['time,issuer,issuer_email,guest,phone,ticket,how,cash,status,handed_in'].concat(ISL.map(r=>[r.created_at,r.staff_name,r.staff_email,r.guest_name,r.guest_phone,r.type_name,r.action,r.action==='declined'?'':r.amount,r.action==='declined'?'rejected':'issued',r.settled_at||''].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','))).join('\n');
+$('isCsv').onclick=()=>{const out=['time,issuer,issuer_email,guest,phone,ticket,how,cash,status,reason,approved_by,handed_in'].concat(ISL.map(r=>[r.created_at,r.staff_name,r.staff_email,r.guest_name,r.guest_phone,r.type_name,r.action,r.action.startsWith('issued')?r.amount:'',r.action.startsWith('issued')?'issued':r.action,r.reason||'',r.approved_by||'',r.settled_at||''].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','))).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='paado-issuers.csv';a.click()};
 
 /* ---------- share tracking ---------- */
