@@ -90,7 +90,7 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .evsw select{max-width:420px;background:rgba(255,255,255,.08);color:var(--cream);border:1px solid rgba(255,255,255,.18);font-weight:800;padding:9px 34px 9px 14px;border-radius:999px;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--sun-2) 50%),linear-gradient(135deg,var(--sun-2) 50%,transparent 50%);background-position:calc(100% - 18px) 55%,calc(100% - 12px) 55%;background-size:6px 6px;background-repeat:no-repeat;text-overflow:ellipsis}
 .evsw select option{color:var(--ink)}
 .evtag{display:inline-block;font-size:.66rem;font-weight:800;letter-spacing:.12em;padding:3px 8px;border-radius:999px;margin-right:4px}
-.ev-live{background:#e3f5ea;color:var(--ok)}.ev-draft{background:#f1e8d6;color:var(--muted)}.ev-ended{background:#fde4e4;color:var(--bad)}.ev-def{background:var(--deep);color:var(--sun-2)}
+.ev-live{background:#e3f5ea;color:var(--ok)}.ev-test{background:#fff1c9;color:#8a5a00}.testbar{background:repeating-linear-gradient(135deg,#ffd75e 0 14px,#ffcb3a 14px 28px);color:#3a2600;font-weight:800;border-radius:14px;padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}.evsel{display:flex;align-items:center;gap:6px;font-size:.75rem;font-weight:800;letter-spacing:.08em;margin:0 0 6px auto;cursor:pointer}.evsel input{width:auto}.radios{display:grid;gap:8px;margin-top:6px}.radios label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#fffdf8;cursor:pointer;text-transform:none;letter-spacing:0;font-size:.92rem;color:var(--ink);margin:0}.radios label:has(input:checked){border-color:var(--sun);background:#fff6ec}.radios input{width:auto;margin-top:3px}.radios small{display:block;color:var(--muted);font-weight:600;margin-top:2px}.ev-draft{background:#f1e8d6;color:var(--muted)}.ev-ended{background:#fde4e4;color:var(--bad)}.ev-def{background:var(--deep);color:var(--sun-2)}
 .type.cur{outline:3px solid var(--sun);outline-offset:-1px}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .chip{font-size:.7rem;font-weight:800;background:#f1e8d6;border-radius:999px;padding:3px 8px}
@@ -210,9 +210,11 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
     <button data-t="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
   </nav>
   <main>
+    <div class="testbar hide" id="testBar"><span>🧪 TEST MODE: this event sells and scans like a live event. Reset it before going live.</span><span><button class="btn sm" style="background:#3a2600;color:#ffd75e" onclick="resetEvents([EV.id])">Reset…</button> <button class="btn sm ghost" style="border-color:#3a2600;color:#3a2600" onclick="editEvent(EV.id)">Change status</button></span></div>
     <!-- EVENTS -->
     <section data-v="events" class="hide">
       <div class="row"><div><h1>Events</h1><p class="sub">Run several events from one admin. The <b>website event</b> is the one people see at the main link; every event also has its own link.</p></div><div class="row right"><button class="btn sun" onclick="editEvent()">+ New event</button></div></div>
+      <div class="bulk" id="evBulk"><b id="evBulkN">0 selected</b><button class="btn sm sun" type="button" onclick="resetEvents([...EVSEL])">Reset selected…</button><button class="btn sm ghost" style="border-color:#fff;color:#fff" type="button" onclick="EVSEL.clear();renderEvents()">Clear</button></div>
       <div class="types" id="evList"></div>
     </section>
 
@@ -357,7 +359,7 @@ async function boot(){
   const {data:isAdmin}=await sb.rpc('is_paado_admin');
   if(!isAdmin){$('loginView').classList.remove('hide');msg($('loginMsg'),'This account is not a Paado admin.');await sb.auth.signOut();return}
   $('who').textContent=session.user.email;$('loginView').classList.add('hide');$('app').classList.remove('hide');
-  await loadEvents();if(!EV){$('stats').innerHTML='<div class="card">No events found.</div>';return}
+  await loadEvents();testBar();if(!EV){$('stats').innerHTML='<div class="card">No events found.</div>';return}
   await Promise.all([loadTypes(),loadSettings()]);loadDash();
 }
 $('loginF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);$('loginGo').disabled=true;
@@ -670,22 +672,52 @@ window.resetPin=async(id,n)=>{if(!confirm(`Reset ${n}'s PIN? They'll create a ne
 window.toggleStaff=async(id,on)=>{await sb.from('paado_staff').update({active:on}).eq('id',id);loadStaff()};
 window.delStaff=async(id,n)=>{if(!confirm(`Delete staff ${n}? They won't be able to sign in. Their past scans stay in the log.`))return;await sb.from('paado_staff').delete().eq('id',id);loadStaff()};
 
+/* ---------- reset ---------- */
+window.resetEvents=async(ids,lead)=>{ids=ids.filter(Boolean);if(!ids.length)return;
+  const evs=EVENTS.filter(e=>ids.includes(e.id));
+  const {data:tk}=await sb.from('paado_tickets').select('event_id,status,qty,people,checked_in').in('event_id',ids);
+  const c={};evs.forEach(e=>c[e.id]={paid:0,other:0,inn:0});(tk||[]).forEach(t=>{const b=c[t.event_id];if(t.status==='paid'){b.paid++;b.inn+=t.checked_in}else b.other++});
+  const realLive=evs.some(e=>e.status==='live'&&c[e.id].paid>0);
+  openM(`<h2 style="margin-top:0">Reset ${evs.length>1?evs.length+' events':'event'}</h2>${lead?`<p class="sub"><b>${esc(lead)}</b></p>`:''}
+  <div class="evchk" style="margin-bottom:12px">${evs.map(e=>`<label style="cursor:default"><span style="flex:1"><b>${esc(e.name)}</b><small style="display:block;color:var(--muted);font-weight:600">${c[e.id].paid} paid orders · ${c[e.id].inn} people checked in · ${c[e.id].other} unpaid/failed</small></span><span class="evtag ev-${e.status}">${e.status.toUpperCase()}</span></label>`).join('')}</div>
+  <p class="help" style="margin:0 0 4px">All check-ins go back to <b>zero</b>, so every ticket can be scanned again. What about the existing tickets and records?</p>
+  <div class="radios" id="rsMode">
+    <label><input type="radio" name="rm" value="keep" checked><span><b>Keep tickets and records</b><small>Tickets stay valid. The check-in history stays in the log for reference.</small></span></label>
+    <label><input type="radio" name="rm" value="clear_log"><span><b>Keep tickets, remove check-in records</b><small>Tickets stay valid. The check-in log for ${evs.length>1?'these events':'this event'} is wiped.</small></span></label>
+    <label><input type="radio" name="rm" value="delete"><span><b>Remove all tickets and records</b><small>Deletes every order and ticket (paid, unpaid and complimentary) plus the check-in log. Old QR codes stop working. Ticket types and settings are kept.</small></span></label>
+  </div>
+  ${realLive?`<p class="msg bad" style="display:block;margin-top:12px">⚠️ ${evs.filter(e=>e.status==='live'&&c[e.id].paid>0).map(e=>esc(e.name)).join(', ')} is LIVE with real paid tickets.</p>`:''}
+  <div id="rsTypeW" class="hide"><label>Type RESET to confirm</label><input id="rsType" autocomplete="off" placeholder="RESET"></div>
+  <div class="row right" style="margin-top:16px"><div class="msg" id="rsMsg"></div><button class="btn ghost" onclick="closeM()">Cancel</button><button class="btn" style="background:var(--bad);color:#fff" id="rsGo">Reset now</button></div>`);
+  const need=()=>{const m=$('mbox').querySelector('input[name=rm]:checked').value;return m==='delete'||realLive};
+  const upd=()=>$('rsTypeW').classList.toggle('hide',!need());upd();
+  $('rsMode').onchange=upd;
+  $('rsGo').onclick=async()=>{const mode=$('mbox').querySelector('input[name=rm]:checked').value;
+    if(need()&&$('rsType').value.trim().toUpperCase()!=='RESET')return msg($('rsMsg'),'Type RESET to confirm.');
+    $('rsGo').disabled=true;$('rsGo').textContent='Resetting…';
+    const {data,error}=await sb.rpc('paado_reset_events',{p_ids:ids,p_mode:mode});
+    if(error){$('rsGo').disabled=false;$('rsGo').textContent='Reset now';return msg($('rsMsg'),error.message)}
+    openM(`<h2 style="margin-top:0">Done ✓</h2>${(Array.isArray(data)?data:[]).map(r=>`<p><b>${esc(r.event)}</b><br><span class="help">${mode==='delete'?`${r.tickets_deleted} tickets and ${r.checkins_deleted} check-in records removed.`:`${r.tickets_reset} tickets set back to 0 check-ins${mode==='clear_log'?`, ${r.checkins_deleted} check-in records removed`:', records kept'}.`}</span></p>`).join('')}<div class="row right"><button class="btn sun" onclick="closeM()">OK</button></div>`);
+    EVSEL.clear();const cur=document.querySelector('#tabs button.on')?.dataset.t||'dash';goTab(cur)}};
+
 /* ---------- events ---------- */
-let EV=null,EVENTS=[];
+let EV=null,EVENTS=[],EVSEL=new Set();
 async function loadEvents(){const {data}=await sb.from('paado_events').select('*').order('created_at');EVENTS=data||[];
   const saved=+localStorage.getItem('paado_admin_event');EV=EVENTS.find(e=>e.id===saved)||EVENTS.find(e=>e.is_default)||EVENTS[0];
-  $('evSel').innerHTML=EVENTS.map(e=>`<option value="${e.id}" ${e.id===EV?.id?'selected':''}>${esc(e.name)}${e.is_default?' ★':''}${e.status!=='live'?' ('+e.status+')':''}</option>`).join('')}
-$('evSel').onchange=async()=>{EV=EVENTS.find(e=>e.id===+$('evSel').value);localStorage.setItem('paado_admin_event',EV.id);SEL.clear();await Promise.all([loadTypes(),loadSettings()]);
+  $('evSel').innerHTML=EVENTS.map(e=>`<option value="${e.id}" ${e.id===EV?.id?'selected':''}>${esc(e.name)}${e.is_default?' ★':''}${e.status==='test'?' 🧪 TEST':e.status!=='live'?' ('+e.status+')':''}</option>`).join('')}
+function testBar(){$('testBar').classList.toggle('hide',!(EV&&EV.status==='test'))}
+$('evSel').onchange=async()=>{EV=EVENTS.find(e=>e.id===+$('evSel').value);testBar();localStorage.setItem('paado_admin_event',EV.id);SEL.clear();await Promise.all([loadTypes(),loadSettings()]);
   const cur=document.querySelector('#tabs button.on')?.dataset.t||'dash';goTab(cur)};
 async function renderEvents(){
   const {data:cnt}=await sb.from('paado_tickets').select('event_id,qty,people,amount,checked_in').eq('status','paid');
   const by={};(cnt||[]).forEach(t=>{const b=by[t.event_id]=by[t.event_id]||{ppl:0,rev:0,inn:0};b.ppl+=t.qty*t.people;b.rev+=Number(t.amount);b.inn+=t.checked_in});
   $('evList').innerHTML=EVENTS.map(e=>{const b=by[e.id]||{ppl:0,rev:0,inn:0};const link=SITE+(e.is_default?'':'?e='+e.slug);return `<div class="type ${e.id===EV.id?'cur':''}">
-    <div style="margin-bottom:6px">${e.is_default?'<span class="evtag ev-def">★ WEBSITE EVENT</span>':''}<span class="evtag ev-${e.status}">${e.status.toUpperCase()}</span>${e.id===EV.id?'<span class="evtag" style="background:var(--sun);color:var(--ink)">EDITING</span>':''}</div>
+    <label class="evsel"><input type="checkbox" ${EVSEL.has(e.id)?'checked':''} onchange="this.checked?EVSEL.add(${e.id}):EVSEL.delete(${e.id});evBulkUI()"> SELECT</label><div style="margin-bottom:6px">${e.is_default?'<span class="evtag ev-def">★ WEBSITE EVENT</span>':''}<span class="evtag ev-${e.status}">${e.status.toUpperCase()}</span>${e.id===EV.id?'<span class="evtag" style="background:var(--sun);color:var(--ink)">EDITING</span>':''}</div>
     <div class="nm">${esc(e.name)}</div><div class="help">${esc((e.settings||{}).date_label||'No date set')} · ${esc((e.settings||{}).venue||'No venue')}</div>
     <div class="row" style="margin:12px 0;gap:8px"><div class="stat" style="flex:1"><b style="font-size:1.6rem">${b.ppl}</b><span>tickets (people)</span></div><div class="stat" style="flex:1"><b style="font-size:1.6rem">${money(b.rev)}</b><span>revenue</span></div><div class="stat" style="flex:1"><b style="font-size:1.6rem">${b.inn}</b><span>checked in</span></div></div>
     <p class="help" style="word-break:break-all">${esc(link)}</p>
-    <div class="row" style="margin-top:10px;gap:8px">${e.id===EV.id?'':`<button class="btn sm sun" onclick="switchEvent(${e.id})">Manage this event</button>`}<button class="btn sm" onclick="editEvent(${e.id})">Edit</button><button class="btn sm ghost" onclick="navigator.clipboard.writeText('${esc(link)}');this.textContent='Copied'">Copy link</button>${e.is_default?'':`<button class="btn sm ghost" onclick="makeDefault(${e.id})">Make website event</button>`}</div></div>`}).join('')}
+    <div class="row" style="margin-top:10px;gap:8px">${e.id===EV.id?'':`<button class="btn sm sun" onclick="switchEvent(${e.id})">Manage this event</button>`}<button class="btn sm" onclick="editEvent(${e.id})">Edit</button><button class="btn sm ghost" onclick="navigator.clipboard.writeText('${esc(link)}');this.textContent='Copied'">Copy link</button>${e.is_default?'':`<button class="btn sm ghost" onclick="makeDefault(${e.id})">Make website event</button>`}<button class="btn sm ghost" style="border-color:var(--bad);color:var(--bad)" onclick="resetEvents([${e.id}])">Reset…</button></div></div>`}).join('');evBulkUI()}
+function evBulkUI(){$('evBulk').classList.toggle('on',EVSEL.size>0);$('evBulkN').textContent=EVSEL.size+' selected'}
 window.switchEvent=id=>{$('evSel').value=id;$('evSel').onchange()};
 window.makeDefault=async id=>{const e=EVENTS.find(x=>x.id===id);if(!confirm(`Show "${e.name}" at the main website link? The current website event will still work at its own link.`))return;
   const cur=EVENTS.find(x=>x.is_default);if(cur){const r=await sb.from('paado_events').update({is_default:false}).eq('id',cur.id);if(r.error)return alert(r.error.message)}
@@ -696,7 +728,7 @@ window.editEvent=id=>{const e=EVENTS.find(x=>x.id===id)||{name:'',slug:'',status
   openM(`<h2 style="margin-top:0">${isNew?'New event':'Edit event'}</h2><form id="evF">
     <label>Event name</label><input name="name" required value="${esc(e.name)}" placeholder="e.g. Paado Island Experience · 5th Edition">
     <label>Link name</label><input name="slug" required pattern="[a-z0-9-]{2,40}" value="${esc(e.slug)}" placeholder="e.g. paado-5" ${isNew?'':'readonly'}><p class="help">The event's own page will be ${esc(SITE)}?e=<b>link-name</b></p>
-    <label>Status</label><select name="status">${['draft','live','ended'].map(x=>`<option ${x===e.status?'selected':''} value="${x}">${{draft:'Draft (hidden, no sales)',live:'Live (on sale, staff can scan)',ended:'Ended (no sales)'}[x]}</option>`).join('')}</select>
+    <label>Status</label><select name="status">${['draft','test','live','ended'].map(x=>`<option ${x===e.status?'selected':''} value="${x}">${{draft:'Draft (hidden, no sales)',test:'Test mode (works exactly like live, marked TEST)',live:'Live (on sale, staff can scan)',ended:'Ended (no sales)'}[x]}</option>`).join('')}</select><p class="help">Test mode sells and scans for real (real Paystack payments, so use a ₵1 hidden type). The event page and scanner show a TEST banner. Reset it before going live.</p><select hidden></select>
     ${isNew?`<label class="chk"><input type="checkbox" name="copySet" checked> Copy event settings from “${esc(EV.name)}” (you can edit them after)</label>
     <label class="chk"><input type="checkbox" name="copyTypes" checked> Copy ticket types and prices from “${esc(EV.name)}”</label>
     <label class="chk"><input type="checkbox" name="copyStaff"> Assign the same staff as “${esc(EV.name)}”</label>`:''}
@@ -706,7 +738,8 @@ window.editEvent=id=>{const e=EVENTS.find(x=>x.id===id)||{name:'',slug:'',status
   $('evF').onsubmit=async ev=>{ev.preventDefault();const f=new FormData(ev.target);
     const row={name:f.get('name').trim(),status:f.get('status')};
     if(!isNew){if(e.is_default&&row.status==='draft')return msg($('evMsg'),'The website event can\'t be a draft. Make another event the website event first.');
-      const {error}=await sb.from('paado_events').update(row).eq('id',id);if(error)return msg($('evMsg'),error.message);closeM();await loadEvents();renderEvents();return}
+      const {error}=await sb.from('paado_events').update(row).eq('id',id);if(error)return msg($('evMsg'),error.message);closeM();await loadEvents();renderEvents();if(EV&&EV.id===id)EV=EVENTS.find(x=>x.id===id);testBar();
+      if(e.status==='test'&&row.status==='live')setTimeout(()=>resetEvents([id],'Going live? Clear out your test data first.'),200);return}
     row.slug=f.get('slug').trim().toLowerCase();row.settings=f.get('copySet')?{...EV.settings}:{};
     const {data:ne,error}=await sb.from('paado_events').insert(row).select('*').single();
     if(error)return msg($('evMsg'),/duplicate|unique/.test(error.message)?'That link name is taken. Pick another.':error.message);

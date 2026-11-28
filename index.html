@@ -571,7 +571,7 @@ async function showTicket(t){
 }
 window.openTicket=async code=>{openM(`<h3>Loading ticket…</h3><div class="spinner"></div>`);
   const r=await api({action:'ticket',code});
-  if(r.ok&&r.ticket){if(r.event&&r.event.settings&&r.event.slug!==window.__evSlug)S=Object.assign({},S,r.event.settings);return showTicket(r.ticket)}
+  if(r.ok&&r.ticket){if(r.event&&r.event.status==='test')testMode();if(r.event&&r.event.settings&&r.event.slug!==window.__evSlug)S=Object.assign({},S,r.event.settings);return showTicket(r.ticket)}
   openM(`<h3>Ticket not found</h3><p class="sub">${esc(r.error||'Check the code and try again.')}</p>`)};
 function findForm(){
   openM(`<h3>Find my ticket</h3><p class="sub">Enter the phone number you paid with.</p>
@@ -595,10 +595,12 @@ async function checkReturn(){
   openM(`<h3>Still confirming</h3><p class="sub">Use "Find my ticket" with your phone number shortly.</p><button class="btn btn-dark" onclick="findForm()">Find my ticket</button>`);return true;
 }
 
+function testMode(){if(document.getElementById('testRib'))return;const d=document.createElement('div');d.id='testRib';d.textContent='🧪 TEST MODE · tickets and payments here are for testing';
+  d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:999;background:repeating-linear-gradient(135deg,#ffd75e 0 14px,#ffcb3a 14px 28px);color:#3a2600;font:800 12px/1.2 system-ui,sans-serif;letter-spacing:.06em;text-align:center;padding:7px 10px;text-transform:uppercase';document.body.appendChild(d)}
 /* ---------- boot ---------- */
 render();refreshMy();
 api({action:'info',event:EVQ,type:q.get('buy')||''}).then(async r=>{
-  if(r&&r.ok){window.__evSlug=r.event&&r.event.slug;S=Object.assign(S,r.settings||{});if(r.types&&r.types.length)TYPES=r.types.map(t=>({...t,price:Number(t.price)}));OPEN=r.open!==false;render();tick()}
+  if(r&&r.ok){window.__evSlug=r.event&&r.event.slug;if(r.event&&r.event.status==='test')testMode();S=Object.assign(S,r.settings||{});if(r.types&&r.types.length)TYPES=r.types.map(t=>({...t,price:Number(t.price)}));OPEN=r.open!==false;render();tick()}
   if(await checkReturn())return;
   if(q.get('t'))return openTicket(q.get('t'));
   if(q.get('buy'))payForm(q.get('buy'));

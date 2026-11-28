@@ -215,7 +215,7 @@ async function login(pin){$('perr').textContent='Signing in…';
   const r=await api({action:'staff_login',email:EMAIL,pin});
   if(!r.ok){$('perr').textContent=r.error||'Wrong PIN';shake();sessionStorage.removeItem('paado_pin');PIN='';
     if(EMAIL&&$('pinStep').classList.contains('hide')){$('emailF').requestSubmit()}return}
-  PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;window.__evs=r.events||[];$('staffName').title=(r.events||[]).map(e=>e.name).join(', ');$('evLine').textContent=(r.events||[]).length===1?r.events[0].name:(r.events||[]).length+' events';setCounts(r.checked_in,r.sold);
+  PIN=pin;sessionStorage.setItem('paado_pin',pin);sessionStorage.setItem('paado_email',EMAIL);$('staffName').textContent=r.name;window.__evs=r.events||[];$('staffName').title=(r.events||[]).map(e=>e.name).join(', ');$('evLine').textContent=(r.events||[]).length===1?r.events[0].name:(r.events||[]).length+' events';$('evLine').innerHTML=((r.events||[]).some(e=>e.status==='test')?'<span style="background:#ffd75e;color:#3a2600;border-radius:6px;padding:1px 6px;font-weight:800;margin-right:4px">TEST</span>':'')+esc($('evLine').textContent);setCounts(r.checked_in,r.sold);
   $('loginS').classList.add('hide');$('scanS').classList.remove('hide');$('perr').textContent='';startCam();keepAwake();
   clearInterval(window.__stats);window.__stats=setInterval(refreshCounts,30000)}
 function setCounts(i,s){if(i!=null)$('inCount').textContent=i;if(s!=null)$('soldCount').textContent=s}
