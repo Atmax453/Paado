@@ -957,6 +957,7 @@ window.editEvent=id=>{const e=EVENTS.find(x=>x.id===id)||{name:'',slug:'',status
   openM(`<h2 style="margin-top:0">${isNew?'New event':'Edit event'}</h2><form id="evF">
     <label>Event name</label><input name="name" required value="${esc(e.name)}" placeholder="e.g. Paado Island Experience · 5th Edition">
     <label>Link name</label><input name="slug" required pattern="[a-z0-9-]{2,40}" value="${esc(e.slug)}" placeholder="e.g. paado-5" ${isNew?'':'readonly'}><p class="help">The event's own page will be ${esc(SITE)}?e=<b>link-name</b></p>
+    <label>Attendee WhatsApp group link (optional)</label><input name="group_link" value="${esc((e.settings||{}).group_link||'')}" placeholder="https://chat.whatsapp.com/…"><p class="help">Added to ticket messages and shown as a “Join the group” button on this event's tickets.</p>
     <label>Status</label><select name="status">${['draft','test','live','ended'].map(x=>`<option ${x===e.status?'selected':''} value="${x}">${{draft:'Draft (hidden, no sales)',test:'Test mode (works exactly like live, marked TEST)',live:'Live (on sale, staff can scan)',ended:'Ended (no sales)'}[x]}</option>`).join('')}</select><p class="help">Test mode sells and scans for real (real Paystack payments, so use a ₵1 hidden type). The event page and scanner show a TEST banner. Reset it before going live.</p><select hidden></select>
     ${isNew?`<label class="chk"><input type="checkbox" name="copySet" checked> Copy event settings from “${esc(EV.name)}” (you can edit them after)</label>
     <label class="chk"><input type="checkbox" name="copyTypes" checked> Copy ticket types and prices from “${esc(EV.name)}”</label>
@@ -966,10 +967,14 @@ window.editEvent=id=>{const e=EVENTS.find(x=>x.id===id)||{name:'',slug:'',status
   $('evF').slug.oninput=()=>{$('evF').slug.dataset.touched=1};
   $('evF').onsubmit=async ev=>{ev.preventDefault();const f=new FormData(ev.target);
     const row={name:f.get('name').trim(),status:f.get('status')};
+    const gl=String(f.get('group_link')||'').trim().split('?')[0];
+    if(gl&&!/^https:\/\/(chat\.whatsapp\.com|whatsapp\.com\/channel)\//.test(gl))return msg($('evMsg'),'The group link should start with https://chat.whatsapp.com/');
+    const withGroup=st=>{const o={...(st||{})};if(gl)o.group_link=gl;else delete o.group_link;return o};
+    if(!isNew)row.settings=withGroup(e.settings);
     if(!isNew){if(e.is_default&&row.status==='draft')return msg($('evMsg'),'The website event can\'t be a draft. Make another event the website event first.');
-      const {error}=await sb.from('paado_events').update(row).eq('id',id);if(error)return msg($('evMsg'),error.message);closeM();await loadEvents();renderEvents();if(EV&&EV.id===id)EV=EVENTS.find(x=>x.id===id);testBar();
+      const {error}=await sb.from('paado_events').update(row).eq('id',id);if(error)return msg($('evMsg'),error.message);closeM();await loadEvents();if(EV&&EV.id===id){EV=EVENTS.find(x=>x.id===id);SET=EV.settings||{};if(EV.is_default)await sb.from('paado_settings').upsert({id:1,data:SET,updated_at:new Date().toISOString()})}renderEvents();testBar();
       if(e.status==='test'&&row.status==='live')setTimeout(()=>resetEvents([id],'Going live? Clear out your test data first.'),200);return}
-    row.slug=f.get('slug').trim().toLowerCase();row.settings=f.get('copySet')?{...EV.settings}:{};
+    row.slug=f.get('slug').trim().toLowerCase();row.settings=withGroup(f.get('copySet')?EV.settings:{});
     const {data:ne,error}=await sb.from('paado_events').insert(row).select('*').single();
     if(error)return msg($('evMsg'),/duplicate|unique/.test(error.message)?'That link name is taken. Pick another.':error.message);
     if(f.get('copyTypes')){const cp=TYPES.map(({id:_,created_at:__,event_id:___,...t})=>({...t,event_id:ne.id}));if(cp.length){const r=await sb.from('paado_ticket_types').insert(cp);if(r.error)alert('Event created, but ticket types could not be copied: '+r.error.message)}}
