@@ -80,6 +80,11 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .sw.on i{background:var(--ok)}.sw.on i::after{left:14px}
 .tag.comp{background:#dff3ff}
 
+
+.bt-ok{color:var(--ok);font-weight:800}.bt-bad{color:var(--bad);font-weight:800}.bt-dup{color:#9a6a00;font-weight:800}
+.bsum{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.bsum span{padding:6px 12px;border-radius:999px;background:#f1e8d6;font-weight:800;font-size:.85rem}
+.bprog{height:10px;background:#f1e8d6;border-radius:99px;overflow:hidden;margin:12px 0}.bprog i{display:block;height:100%;width:0;background:var(--sun);transition:width .2s}
 /* ================= MOBILE ================= */
 .mbtn{display:none;background:none;border:0;color:var(--cream);font-size:1.6rem;line-height:1;padding:4px 6px;cursor:pointer}
 .bnav{display:none}
@@ -215,6 +220,21 @@ td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
         <label>Note (optional)</label><input name="note" placeholder="e.g. Paid cash to Kofi / USSD ref …">
         <button class="btn sun" style="margin-top:16px;width:100%">Issue ticket</button><div class="msg" id="issueMsg"></div>
       </form><div id="issueOut"></div></div>
+
+      <h2 id="batchH">Batch issue (many people at once)</h2>
+      <div class="card" id="batchCard">
+        <p class="help" style="margin:0 0 10px">Paste your list straight from Google Forms / Google Sheets / Excel / WhatsApp. One person per line, with a name and a phone number in any order, e.g. <b>Ama Mensah, 0244123456</b>. Header rows and extra columns (timestamps, emails) are ignored. You can also upload a .csv file (Google Forms → Responses → ⋮ → Download responses).</p>
+        <textarea id="bText" placeholder="Ama Mensah	0244123456&#10;Kofi Boateng, 020 123 4567&#10;Esi Owusu - +233551112222" style="min-height:160px;font-family:ui-monospace,Menlo,monospace;font-size:14px"></textarea>
+        <div class="row" style="margin-top:10px">
+          <div><label>Or upload CSV</label><input type="file" id="bFile" accept=".csv,.txt,text/csv"></div>
+          <div><label>Ticket type for everyone</label><select id="bType"></select></div>
+          <div><label>Amount per ticket (₵)</label><input type="number" id="bAmt" min="0" step="0.01" value="0"></div>
+        </div>
+        <label>Note (optional, saved on every ticket)</label><input id="bNote" placeholder="e.g. Google Form list · sponsors · team">
+        <div class="row right" style="margin-top:14px"><button class="btn ghost" id="bPrev" type="button">Preview list</button></div>
+        <div id="bPreview"></div>
+      </div>
+      <div id="bResult"></div>
     </section>
 
     <!-- TYPES -->
@@ -382,7 +402,7 @@ $('modal').onclick=e=>{if(e.target===$('modal'))closeM()};
 
 /* ---------- issue ---------- */
 function newCode(){const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint8Array(6));return 'PIE-'+[...r].map(b=>a[b%a.length]).join('')}
-function fillIssue(){$('issueType').innerHTML=TYPES.filter(t=>t.active).map(t=>`<option value="${esc(t.slug)}">${esc(t.name)} · ${t.complimentary?'Complimentary':'₵'+t.price}${t.hidden&&!t.complimentary?' (hidden)':''}</option>`).join('');updAmt()}
+function fillIssue(){fillBatchTypes();$('issueType').innerHTML=TYPES.filter(t=>t.active).map(t=>`<option value="${esc(t.slug)}">${esc(t.name)} · ${t.complimentary?'Complimentary':'₵'+t.price}${t.hidden&&!t.complimentary?' (hidden)':''}</option>`).join('');updAmt()}
 function updAmt(){const t=TYPES.find(x=>x.slug===$('issueType').value);$('issueAmt').value=t?(t.complimentary?0:Number(t.price)*Number($('issueF').qty.value||1)):''}
 $('issueType').onchange=updAmt;$('issueF').qty.oninput=updAmt;
 $('issueF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const t=TYPES.find(x=>x.slug===f.get('tier'));if(!t)return;
@@ -399,6 +419,86 @@ $('issueF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target)
     $('issueOut').innerHTML=`<div class="card"><img src="${url}" style="width:100%;border-radius:12px"><div class="row" style="margin-top:12px"><button class="btn sun" id="idl">Download</button><a class="btn ghost" target="_blank" href="https://wa.me/${esc(waNum(phone))}?text=${encodeURIComponent('Your Paado Island Experience ticket: '+link)}">Send on WhatsApp</a></div><p class="help" style="margin-top:8px">${esc(link)}</p></div>`;
     $('idl').onclick=()=>PaadoTicket.download(url,code);return}
   msg($('issueMsg'),'Could not create a unique code. Try again.')};
+
+
+/* ---------- batch issue ---------- */
+let BATCH=[];
+function fillBatchTypes(){$('bType').innerHTML=TYPES.filter(t=>t.active).map(t=>`<option value="${esc(t.slug)}">${esc(t.name)}${t.complimentary?' (free)':' · ₵'+t.price}</option>`).join('');
+  const c=TYPES.find(t=>t.complimentary&&t.active);if(c)$('bType').value=c.slug;bAmtDefault()}
+function bAmtDefault(){const t=TYPES.find(x=>x.slug===$('bType').value);$('bAmt').value=t&&!t.complimentary?t.price:0}
+$('bType').onchange=bAmtDefault;
+function normPhone(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00233'))d=d.slice(5);else if(d.startsWith('233'))d=d.slice(3);if(d.length===9)d='0'+d;return /^0\d{9}$/.test(d)?d:''}
+function splitLine(line){
+  if(line.includes('\t'))return line.split('\t');
+  // CSV with quotes
+  const out=[];let cur='',q=false;for(const ch of line){if(ch==='"'){q=!q;continue}if(ch===','&&!q){out.push(cur);cur='';continue}cur+=ch}out.push(cur);
+  return out.length>1?out:line.split(/\s*[;|]\s*|\s+-\s+/)}
+function parseBatch(text){
+  const rows=[];const seen=new Set();
+  text.split(/\r?\n/).forEach((raw,i)=>{const line=raw.trim();if(!line)return;
+    let cells=splitLine(line).map(c=>c.trim()).filter(Boolean);
+    // find phone: a cell (or the line) containing 9-13 digits
+    let phone='',nameCells=[];
+    for(const c of cells){const digits=c.replace(/[^\d+]/g,'');const n=normPhone(digits);
+      if(!phone&&n&&/^[\d\s+()\-.]+$/.test(c)){phone=n;continue}
+      if(/@/.test(c)||/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(c)||/^\d{4}-\d{2}-\d{2}/.test(c)||/^\d+$/.test(c))continue; // emails, timestamps, numbers
+      nameCells.push(c)}
+    if(!phone){const m=line.match(/(\+?233|0)[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{4}/);if(m){phone=normPhone(m[0]);nameCells=[line.replace(m[0],'').replace(/[,\t;|\-]+/g,' ').trim()]}}
+    let name=(nameCells.find(c=>/[a-zA-Z]{2,}/.test(c)&&!/timestamp|name|phone|number|email|whatsapp|contact/i.test(c))||nameCells[0]||'').replace(/\s+/g,' ').trim().slice(0,60);
+    if(/^(timestamp|name|full name|phone|number)/i.test(line)&&!phone)return; // header row
+    let status='ok';
+    if(!phone)status='bad_phone';else if(name.length<2)status='bad_name';else if(seen.has(phone+'|'+name.toLowerCase()))status='dup';
+    if(status==='ok')seen.add(phone+'|'+name.toLowerCase());
+    rows.push({line:i+1,raw:line,name,phone,status,include:status==='ok'})});
+  return rows}
+$('bFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('bText').value=await f.text();$('bPrev').click()};
+$('bPrev').onclick=()=>{BATCH=parseBatch($('bText').value);renderBatch()};
+function renderBatch(){
+  if(!BATCH.length){$('bPreview').innerHTML='<p class="msg bad">Nothing found. Paste one person per line with a name and phone number.</p>';return}
+  const ok=BATCH.filter(r=>r.include).length,bad=BATCH.filter(r=>r.status.startsWith('bad')).length,dup=BATCH.filter(r=>r.status==='dup').length;
+  const lbl={ok:'<span class="bt-ok">ready</span>',bad_phone:'<span class="bt-bad">no valid phone</span>',bad_name:'<span class="bt-bad">no name</span>',dup:'<span class="bt-dup">duplicate</span>'};
+  const t=TYPES.find(x=>x.slug===$('bType').value);
+  $('bPreview').innerHTML=`<div class="bsum"><span>${BATCH.length} lines</span><span class="bt-ok">${ok} will get tickets</span>${bad?`<span class="bt-bad">${bad} need fixing</span>`:''}${dup?`<span class="bt-dup">${dup} duplicates skipped</span>`:''}</div>
+   <div class="tw" style="max-height:420px;overflow:auto"><table><thead><tr><th></th><th>Name</th><th>Phone</th><th>Status</th></tr></thead><tbody>${BATCH.map((r,i)=>`<tr>
+     <td><input type="checkbox" data-i="${i}" ${r.include?'checked':''} ${r.status.startsWith('bad')?'disabled':''} style="width:auto"></td>
+     <td><input data-n="${i}" value="${esc(r.name)}" style="padding:7px 9px;min-width:150px"></td>
+     <td><input data-p="${i}" value="${esc(r.phone)}" placeholder="add phone" style="padding:7px 9px;min-width:130px" inputmode="tel"></td>
+     <td>${lbl[r.status]}</td></tr>`).join('')}</tbody></table></div>
+   <div class="row right" style="margin-top:14px"><div class="msg" id="bMsg"></div><button class="btn sun" id="bGo" type="button">Issue ${ok} ${esc(t?t.name:'')} ticket${ok===1?'':'s'}</button></div>`;
+  $('bPreview').querySelectorAll('[data-i]').forEach(c=>c.onchange=()=>{BATCH[+c.dataset.i].include=c.checked;renderBatch()});
+  $('bPreview').querySelectorAll('[data-n],[data-p]').forEach(inp=>inp.onchange=()=>{const i=+(inp.dataset.n??inp.dataset.p);const r=BATCH[i];
+    if(inp.dataset.n!=null)r.name=inp.value.trim();else r.phone=normPhone(inp.value);
+    r.status=!r.phone?'bad_phone':r.name.length<2?'bad_name':'ok';r.include=r.status==='ok';renderBatch()});
+  $('bGo').onclick=issueBatch}
+async function issueBatch(){
+  const t=TYPES.find(x=>x.slug===$('bType').value);const list=BATCH.filter(r=>r.include);if(!t||!list.length)return;
+  if(!confirm(`Issue ${list.length} ${t.name} ticket(s) at ₵${$('bAmt').value} each?`))return;
+  const {data:{user}}=await sb.auth.getUser();const amt=Number($('bAmt').value||0);const note=[$('bNote').value.trim(),'batch','issued by '+(user?.email||'admin')].filter(Boolean).join(' · ');
+  $('bGo').disabled=true;$('bResult').innerHTML=`<div class="card" style="margin-top:14px"><b>Issuing tickets…</b><div class="bprog"><i id="bBar"></i></div><p class="help" id="bCount">0 / ${list.length}</p></div>`;
+  const done=[];const failed=[];const stamp=Date.now().toString(36);
+  for(let k=0;k<list.length;k+=25){
+    const chunk=list.slice(k,k+25).map((r,j)=>({reference:`PIE-B-${stamp}-${k+j}-${Math.random().toString(36).slice(2,5)}`,code:newCode(),name:r.name,phone:r.phone,qty:1,tier:t.slug,tier_name:t.name,people:t.people,unit_price:t.price,amount:amt,status:'paid',channel:'manual',paid_at:new Date().toISOString(),note}));
+    let {data,error}=await sb.from('paado_tickets').insert(chunk).select('code,name,phone');
+    if(error){ // retry one by one (e.g. rare code clash)
+      for(const row of chunk){let ok=false;for(let a=0;a<3&&!ok;a++){const r=await sb.from('paado_tickets').insert({...row,code:a?newCode():row.code}).select('code,name,phone').single();if(!r.error){done.push(r.data);ok=true}}if(!ok)failed.push(row)}}
+    else done.push(...data);
+    $('bBar').style.width=Math.round(Math.min(k+25,list.length)/list.length*100)+'%';$('bCount').textContent=`${Math.min(k+25,list.length)} / ${list.length}`;
+  }
+  window.__batchDone=done;
+  const link=c=>SITE+'?t='+encodeURIComponent(c);
+  const msgFor=r=>`Hi ${r.name}, here is your Paado Island Experience ticket 🌴\n${link(r.code)}\nShow the QR at the gate. ${SET.date_label||''} · ${SET.time_label||''} · ${SET.venue||''}`;
+  $('bResult').innerHTML=`<div class="card" style="margin-top:14px">
+    <h2 style="margin-top:0">${done.length} ticket${done.length===1?'':'s'} issued${failed.length?` · <span class="bt-bad">${failed.length} failed</span>`:''}</h2>
+    <p class="help">Send each person their ticket link. Tap <b>Send</b> to open WhatsApp with the message ready, or download the list.</p>
+    <div class="row" style="margin:12px 0"><button class="btn sun" id="bCsv">Download list (CSV)</button><button class="btn ghost" id="bCopy">Copy all messages</button></div>
+    <div class="tw" style="max-height:520px;overflow:auto"><table><thead><tr><th>Name</th><th>Phone</th><th>Ticket</th><th></th></tr></thead><tbody>${done.map(r=>`<tr data-sent="0">
+      <td>${esc(r.name)}</td><td>${esc(r.phone)}</td><td class="mono"><a href="#" onclick="viewTicket('${esc(r.code)}');return false">${esc(r.code)}</a></td>
+      <td style="white-space:nowrap"><a class="btn sm sun" target="_blank" href="https://wa.me/${waNum(r.phone)}?text=${encodeURIComponent(msgFor(r))}" onclick="this.textContent='Sent ✓';this.classList.remove('sun');this.classList.add('ghost')">Send</a></td></tr>`).join('')}</tbody></table></div></div>`;
+  $('bCsv').onclick=()=>{const out=['name,phone,ticket_code,ticket_link'].concat(done.map(r=>[r.name,r.phone,r.code,link(r.code)].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='paado-batch-tickets.csv';a.click()};
+  $('bCopy').onclick=async()=>{await navigator.clipboard.writeText(done.map(msgFor).join('\n\n'));$('bCopy').textContent='Copied'};
+  BATCH=[];$('bPreview').innerHTML='';$('bText').value='';
+}
 
 /* ---------- types ---------- */
 async function loadTypes(){const {data}=await sb.from('paado_ticket_types').select('*').order('sort');TYPES=(data||[]).map(t=>({...t,price:Number(t.price)}))}
