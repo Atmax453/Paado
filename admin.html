@@ -428,29 +428,84 @@ function fillBatchTypes(){$('bType').innerHTML=TYPES.filter(t=>t.active).map(t=>
 function bAmtDefault(){const t=TYPES.find(x=>x.slug===$('bType').value);$('bAmt').value=t&&!t.complimentary?t.price:0}
 $('bType').onchange=bAmtDefault;
 function normPhone(p){let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00233'))d=d.slice(5);else if(d.startsWith('233'))d=d.slice(3);if(d.length===9)d='0'+d;return /^0\d{9}$/.test(d)?d:''}
-function splitLine(line){
-  if(line.includes('\t'))return line.split('\t');
-  // CSV with quotes
-  const out=[];let cur='',q=false;for(const ch of line){if(ch==='"'){q=!q;continue}if(ch===','&&!q){out.push(cur);cur='';continue}cur+=ch}out.push(cur);
-  return out.length>1?out:line.split(/\s*[;|]\s*|\s+-\s+/)}
+/* ---- smart list reader ---- */
+let BCOLS=null; // {cells:[[...]], header:[...], name:[idx..], phone:idx, start:n}
+const isPhoneCell=c=>!!normPhone(c)&&/^[\d\s+()\-.]{9,20}$/.test(String(c).trim());
+const isJunk=c=>/@|^https?:|^\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|^\d{4}-\d{2}-\d{2}|^\d+([.,]\d+)?$|^(yes|no|true|false|n\/?a|nil|none|-)$/i.test(String(c).trim());
+const isNameCell=c=>{c=String(c).trim();return c.length>=2&&c.length<=60&&/[a-zA-ZÀ-ɏ]{2,}/.test(c)&&!isJunk(c)&&!/\d{4,}/.test(c)&&c.split(/\s+/).length<=6};
+const HDR_NAME=/^(full\s*name|name|names|your\s*name|attendee|guest|participant|student\s*name|first\s*name|surname|last\s*name|other\s*names?)\b/i;
+const HDR_PHONE=/(whats\s*app|phone|mobile|contact|tel|number|momo|cell)/i;
+function cleanName(n){n=String(n||'').replace(/\([^)]*\)|\[[^\]]*\]/g,' ').replace(/[\u2705\u2B50\u2714\u274C]/g,'').replace(/[\u{1F300}-\u{1FAFF}☀-➿]/gu,'').replace(/^[\s\d.)\-•*#]+/,'').replace(/\b(name|phone|tel|contact)\s*[:\-]/ig,'').replace(/[_|;,]+/g,' ').replace(/\s+/g,' ').trim();
+  if(n===n.toUpperCase()||n===n.toLowerCase())n=n.toLowerCase().replace(/(^|[\s\-'])\p{L}/gu,m=>m.toUpperCase());return n.slice(0,60)}
+function csvRows(text,delim){const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch;continue}
+    if(ch==='"'){q=true;continue}
+    if(ch===delim){row.push(cur);cur='';continue}
+    if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);rows.push(row);row=[];cur='';continue}
+    cur+=ch}
+  row.push(cur);rows.push(row);return rows.map(r=>r.map(c=>c.trim())).filter(r=>r.some(c=>c))}
+function detectTable(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());if(lines.length<1)return null;
+  const tabs=lines.filter(l=>l.includes('\t')).length,commas=lines.filter(l=>(l.match(/,/g)||[]).length>=1).length;
+  const delim=tabs>=lines.length*.5?'\t':commas>=lines.length*.6?',':null;if(!delim)return null;
+  const rows=csvRows(text,delim);const width=Math.max(...rows.map(r=>r.length));if(width<2)return null;
+  // header = first row with no phone cell and some header-like/alpha cells
+  let start=0,header=[];
+  for(let i=0;i<Math.min(rows.length,5);i++){const r=rows[i];if(!r.some(isPhoneCell)&&r.some(c=>HDR_NAME.test(c)||HDR_PHONE.test(c)||/timestamp|email|date/i.test(c))){header=r;start=i+1;break}}
+  const data=rows.slice(start);if(!data.length)return null;
+  const score=(col,fn)=>{let n=0,t=0;data.forEach(r=>{const c=r[col];if(c==null||c==='')return;t++;if(fn(c))n++});return t?n/t:0};
+  let phone=-1,best=0;
+  for(let c=0;c<width;c++){let sc=score(c,isPhoneCell);const h=header[c]||'';if(HDR_PHONE.test(h))sc+=.15;if(/whats\s*app/i.test(h))sc+=.1;if(/emergency|parent|guardian|next\s*of\s*kin/i.test(h))sc-=.4;if(sc>best){best=sc;phone=c}}
+  if(best<.3)return null;
+  let first=-1,last=-1,full=-1,fb=0;
+  header.forEach((h,c)=>{if(c===phone)return;if(/first\s*name|given/i.test(h))first=c;else if(/surname|last\s*name|family|other\s*names?/i.test(h))last=c;else if(HDR_NAME.test(h)&&full<0)full=c});
+  let name=[];
+  if(full>=0)name=[full];else if(first>=0)name=last>=0?[first,last]:[first];
+  else{for(let c=0;c<width;c++){if(c===phone)continue;const sc=score(c,isNameCell)+(HDR_NAME.test(header[c]||'')?.2:0)-(/email|school|program|level|hall|course|gender|department|address|location/i.test(header[c]||'')?.5:0);if(sc>fb){fb=sc;full=c}}if(full>=0)name=[full]}
+  if(!name.length)return null;
+  return {rows,header,start,width,phone,name}}
 function parseBatch(text){
-  const rows=[];const seen=new Set();
-  text.split(/\r?\n/).forEach((raw,i)=>{const line=raw.trim();if(!line)return;
-    let cells=splitLine(line).map(c=>c.trim()).filter(Boolean);
-    // find phone: a cell (or the line) containing 9-13 digits
-    let phone='',nameCells=[];
-    for(const c of cells){const digits=c.replace(/[^\d+]/g,'');const n=normPhone(digits);
-      if(!phone&&n&&/^[\d\s+()\-.]+$/.test(c)){phone=n;continue}
-      if(/@/.test(c)||/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(c)||/^\d{4}-\d{2}-\d{2}/.test(c)||/^\d+$/.test(c))continue; // emails, timestamps, numbers
-      nameCells.push(c)}
-    if(!phone){const m=line.match(/(\+?233|0)[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{4}/);if(m){phone=normPhone(m[0]);nameCells=[line.replace(m[0],'').replace(/[,\t;|\-]+/g,' ').trim()]}}
-    let name=(nameCells.find(c=>/[a-zA-Z]{2,}/.test(c)&&!/timestamp|name|phone|number|email|whatsapp|contact/i.test(c))||nameCells[0]||'').replace(/\s+/g,' ').trim().slice(0,60);
-    if(/^(timestamp|name|full name|phone|number)/i.test(line)&&!phone)return; // header row
-    let status='ok';
-    if(!phone)status='bad_phone';else if(name.length<2)status='bad_name';else if(seen.has(phone+'|'+name.toLowerCase()))status='dup';
-    if(status==='ok')seen.add(phone+'|'+name.toLowerCase());
-    rows.push({line:i+1,raw:line,name,phone,status,include:status==='ok'})});
-  return rows}
+  const rows=[];const seen=new Set();let skipped=0;
+  const push=(line,raw,name,phone)=>{name=cleanName(name);
+    if(!phone&&!name){skipped++;return}
+    if(!phone&&!/[a-z]/i.test(name)){skipped++;return}
+    if(/^(total|sum|count|test|sample|example)\b/i.test(name)&&!phone){skipped++;return}
+    let status='ok';const key=phone||('x'+name.toLowerCase());
+    if(!phone)status='bad_phone';else if(name.length<2)status='bad_name';else if(seen.has(key))status='dup';
+    if(status==='ok')seen.add(key);
+    rows.push({line,raw,name,phone,status,include:status==='ok'})};
+  BCOLS=detectTable(text);
+  if(BCOLS){const {rows:R,start,phone,name}=BCOLS;
+    R.slice(start).forEach((r,i)=>{const ph=normPhone(r[phone]);
+      let nm=name.map(c=>r[c]||'').join(' ').trim();
+      if(!isNameCell(nm)){const alt=r.find((c,j)=>j!==phone&&isNameCell(c)&&!HDR_NAME.test(c));if(alt)nm=alt}
+      if(!ph&&!r.some(isPhoneCell)&&!isNameCell(nm)){skipped++;return}
+      push(start+i+1,r.join(' · '),nm,ph||normPhone((r.find(isPhoneCell)||'')))});
+  }else{
+    text.split(/\r?\n/).forEach((raw,i)=>{let line=raw.trim();if(!line){return}
+      if(/^\[?\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?,?\s+\d{1,2}:\d{2}/.test(line))line=line.replace(/^\[?[^\]\-]*[\]\-]\s*[^:]+:\s*/,''); // WhatsApp export prefix
+      const m=line.match(/(\+?233|00233|0)[\s\-.]?\(?\d{2}\)?[\s\-.]?\d{3}[\s\-.]?\d{4}/);
+      const ph=m?normPhone(m[0]):'';
+      let nm=m?line.replace(m[0],' '):line;
+      nm=nm.split(/[\t,;|]|\s+-\s+/).map(x=>x.trim()).filter(x=>x&&!isJunk(x)).find(isNameCell)||'';
+      if(!ph&&/^(timestamp|names?|full\s*name|phone|whats\s*app|number|contact|s\/?n|no\.)\b/i.test(line)){skipped++;return}
+      if(!ph&&(/\b(list|guests?|attendees?|total|tickets?|paado|names|registered|registration|form)\b/i.test(line)||/^[\-=_*~.\s]+$/.test(line)||cleanName(nm).split(' ').length>4)){skipped++;return}
+      push(i+1,raw,nm,ph)})}
+  parseBatch.skipped=skipped;return rows}
+function colPicker(){if(!BCOLS)return '';const {header,width,phone,name,rows,start}=BCOLS;
+  const label=c=>header[c]?header[c]:`Column ${c+1} (e.g. ${(rows[start]||[])[c]||'—'})`;
+  const opts=sel=>Array.from({length:width},(_,c)=>`<option value="${c}" ${sel.includes(c)?'selected':''}>${esc(label(c))}</option>`).join('');
+  return `<div class="row card" style="margin:12px 0;background:#fffaf0"><div><label>Names come from</label><select id="cName">${opts(name.slice(0,1))}</select></div>
+    ${name.length>1?`<div><label>+ surname from</label><select id="cName2">${opts([name[1]])}</select></div>`:''}
+    <div><label>Phone numbers come from</label><select id="cPhone">${opts([phone])}</select></div></div>`}
+function reparseWithCols(){const n=[+$('cName').value];if($('cName2'))n.push(+$('cName2').value);const ph=+$('cPhone').value;
+  const keep=BCOLS;const rows=[];const seen=new Set();let skipped=0;
+  keep.rows.slice(keep.start).forEach((r,i)=>{const p=normPhone(r[ph]);const nm=cleanName(n.map(c=>r[c]||'').join(' '));
+    if(!p&&!isNameCell(nm)){skipped++;return}
+    let status='ok';if(!p)status='bad_phone';else if(nm.length<2)status='bad_name';else if(seen.has(p))status='dup';if(status==='ok')seen.add(p);
+    rows.push({line:keep.start+i+1,raw:r.join(' · '),name:nm,phone:p,status,include:status==='ok'})});
+  BCOLS={...keep,name:n,phone:ph};parseBatch.skipped=skipped;BATCH=rows;renderBatch()}
 $('bFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;$('bText').value=await f.text();$('bPrev').click()};
 $('bPrev').onclick=()=>{BATCH=parseBatch($('bText').value);renderBatch()};
 function renderBatch(){
@@ -458,7 +513,8 @@ function renderBatch(){
   const ok=BATCH.filter(r=>r.include).length,bad=BATCH.filter(r=>r.status.startsWith('bad')).length,dup=BATCH.filter(r=>r.status==='dup').length;
   const lbl={ok:'<span class="bt-ok">ready</span>',bad_phone:'<span class="bt-bad">no valid phone</span>',bad_name:'<span class="bt-bad">no name</span>',dup:'<span class="bt-dup">duplicate</span>'};
   const t=TYPES.find(x=>x.slug===$('bType').value);
-  $('bPreview').innerHTML=`<div class="bsum"><span>${BATCH.length} lines</span><span class="bt-ok">${ok} will get tickets</span>${bad?`<span class="bt-bad">${bad} need fixing</span>`:''}${dup?`<span class="bt-dup">${dup} duplicates skipped</span>`:''}</div>
+  const det=BCOLS?`<p class="help" style="margin-top:12px">📋 Read as a table: names from <b>${esc(BCOLS.name.map(c=>BCOLS.header[c]||'column '+(c+1)).join(' + '))}</b>, phones from <b>${esc(BCOLS.header[BCOLS.phone]||'column '+(BCOLS.phone+1))}</b>. Wrong? Change it below.</p>${colPicker()}`:'';
+  $('bPreview').innerHTML=det+`<div class="bsum"><span>${BATCH.length} people found</span>${parseBatch.skipped?`<span>${parseBatch.skipped} unwanted rows skipped</span>`:''}<span class="bt-ok">${ok} will get tickets</span>${bad?`<span class="bt-bad">${bad} need fixing</span>`:''}${dup?`<span class="bt-dup">${dup} duplicates skipped</span>`:''}</div>
    <div class="tw" style="max-height:420px;overflow:auto"><table><thead><tr><th></th><th>Name</th><th>Phone</th><th>Status</th></tr></thead><tbody>${BATCH.map((r,i)=>`<tr>
      <td><input type="checkbox" data-i="${i}" ${r.include?'checked':''} ${r.status.startsWith('bad')?'disabled':''} style="width:auto"></td>
      <td><input data-n="${i}" value="${esc(r.name)}" style="padding:7px 9px;min-width:150px"></td>
@@ -469,7 +525,8 @@ function renderBatch(){
   $('bPreview').querySelectorAll('[data-n],[data-p]').forEach(inp=>inp.onchange=()=>{const i=+(inp.dataset.n??inp.dataset.p);const r=BATCH[i];
     if(inp.dataset.n!=null)r.name=inp.value.trim();else r.phone=normPhone(inp.value);
     r.status=!r.phone?'bad_phone':r.name.length<2?'bad_name':'ok';r.include=r.status==='ok';renderBatch()});
-  $('bGo').onclick=issueBatch}
+  $('bGo').onclick=issueBatch;
+  if($('cName'))['cName','cName2','cPhone'].forEach(id=>{if($(id))$(id).onchange=reparseWithCols})}
 async function issueBatch(){
   const t=TYPES.find(x=>x.slug===$('bType').value);const list=BATCH.filter(r=>r.include);if(!t||!list.length)return;
   if(!confirm(`Issue ${list.length} ${t.name} ticket(s) at ₵${$('bAmt').value} each?`))return;
