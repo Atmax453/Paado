@@ -475,8 +475,11 @@ $('issueType').onchange=updAmt;$('issueF').qty.oninput=updAmt;
 $('issueF').onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const t=TYPES.find(x=>x.slug===f.get('tier'));if(!t)return;
   let phone=String(f.get('phone')).replace(/\D/g,'');if(phone.startsWith('233'))phone='0'+phone.slice(3);if(phone.length===9)phone='0'+phone;
   const qty=Math.max(1,Math.min(10,+f.get('qty')||1));
-  {const ex=await existingTickets();const nm=String(f.get('name')).trim();const hit=ex.find(x=>x.phone===phone)||ex.find(x=>sameName(x.name,nm));
-   if(hit&&!confirm(`Possible duplicate: ${hit.name} (${hit.phone}) already has a ${hit.tier_name} ticket ${hit.code} for this event.\n\nIssue another ticket anyway?`))return}
+  {const ex=await existingTickets();const nm=String(f.get('name')).trim();const free=!(Number(f.get('amount'))>0);
+   const freeHit=free&&ex.find(x=>x.phone===phone&&isFreeT(x));
+   if(freeHit){await dupPrompt(freeHit,true);return}
+   const ph=ex.find(x=>x.phone===phone),hit=ph||ex.find(x=>sameName(x.name,nm));
+   if(hit&&!(await dupPrompt(hit,false,!ph)))return}
   const {data:{user}}=await sb.auth.getUser();
   for(let i=0;i<4;i++){const code=newCode();
     const row={event_id:EV.id,reference:'PIE-M-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6),code,name:String(f.get('name')).trim(),phone,qty,tier:t.slug,tier_name:t.name,people:t.people,
@@ -615,11 +618,21 @@ const nameToks=n=>String(n||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/
 function sameName(a,b){const A=new Set(nameToks(a)),B=new Set(nameToks(b));if(!A.size||!B.size)return false;
   let c=0;A.forEach(w=>{if(B.has(w))c++});const mn=Math.min(A.size,B.size);
   return (c===A.size&&c===B.size)||(mn>=2&&c>=mn)}
-async function existingTickets(){const {data}=await sb.from('paado_tickets').select('name,phone,tier_name,code,qty,people').eq('event_id',EV.id).eq('status','paid').limit(10000);return data||[]}
+async function existingTickets(){const {data}=await sb.from('paado_tickets').select('name,phone,tier_name,code,qty,people,amount,cash_received').eq('event_id',EV.id).eq('status','paid').limit(10000);return data||[]}
+const isFreeT=t=>!(Number(t.amount)>0)&&!(Number(t.cash_received)>0);
+/* small duplicate prompt: free -> rejected (OK only); paid -> Issue anyway / Cancel */
+function dupPrompt(hit,free,byName){return new Promise(res=>{
+  openM(`<div style="text-align:center"><div style="font-size:2.4rem">${free?'⛔':'⚠️'}</div><h2 style="margin:6px 0">${free?'Already has a free ticket':'Ticket already issued'}</h2>
+  <p class="sub" style="margin:0 0 6px"><b>${esc(hit.name)}</b> · ${esc(hit.phone)}<br>${esc(hit.tier_name)} · <span class="mono">${esc(hit.code)}</span>${byName?'<br><small>(matched by name)</small>':''}</p>
+  <p style="font-weight:700;margin:10px 0">${free?'Only one free ticket per person. This one was not issued.':'Issue another ticket for this person?'}</p>
+  <div class="row" style="justify-content:center;gap:8px;margin-top:12px">${free?'<button class="btn sun" id="dpOk">OK</button>':'<button class="btn ghost" id="dpNo">Cancel</button><button class="btn sun" id="dpYes">Issue anyway</button>'}</div></div>`);
+  const done=v=>{closeM();res(v)};if($('dpOk'))$('dpOk').onclick=()=>done(false);if($('dpNo'))$('dpNo').onclick=()=>done(false);if($('dpYes'))$('dpYes').onclick=()=>done(true)})}
 async function markDups(){
   const ex=await existingTickets();const byPhone=new Map(ex.map(t=>[t.phone,t]));
   BATCH.forEach((r,i)=>{if(r.status!=='ok')return;
     const hp=byPhone.get(r.phone);
+    const freeBatch=!(Number($('bAmt').value)>0);const hf=freeBatch&&ex.find(t=>t.phone===r.phone&&isFreeT(t));
+    if(hf){r.status='freedup';r.include=false;r.info=`Already has a free ticket: ${hf.tier_name} · ${hf.code}`;return}
     if(hp){r.status='has';r.include=false;r.info=`${hp.name} · ${hp.tier_name} · ${hp.code}`;return}
     const hn=ex.find(t=>sameName(t.name,r.name));
     if(hn){r.status='maybe';r.include=false;r.info=`Existing ticket: ${hn.name} · ${hn.phone} · ${hn.code}`;return}
@@ -628,13 +641,13 @@ async function markDups(){
   BATCH._ex=ex.length}
 function renderBatch(){
   if(!BATCH.length){$('bPreview').innerHTML='<p class="msg bad">Nothing found. Paste one person per line with a name and phone number.</p>';return}
-  const has=BATCH.filter(r=>r.status==='has').length,maybe=BATCH.filter(r=>r.status==='maybe').length;const ok=BATCH.filter(r=>r.include).length,bad=BATCH.filter(r=>r.status.startsWith('bad')).length,dup=BATCH.filter(r=>r.status==='dup').length;
-  const lbl={ok:'<span class="bt-ok">ready</span>',bad_phone:'<span class="bt-bad">no valid phone</span>',bad_name:'<span class="bt-bad">no name</span>',dup:'<span class="bt-dup">duplicate</span>',has:'<span class="bt-dup">already has a ticket</span>',maybe:'<span class="bt-dup">possible duplicate</span>'};
+  const fdup=BATCH.filter(r=>r.status==='freedup').length;const has=BATCH.filter(r=>r.status==='has').length,maybe=BATCH.filter(r=>r.status==='maybe').length;const ok=BATCH.filter(r=>r.include).length,bad=BATCH.filter(r=>r.status.startsWith('bad')).length,dup=BATCH.filter(r=>r.status==='dup').length;
+  const lbl={ok:'<span class="bt-ok">ready</span>',bad_phone:'<span class="bt-bad">no valid phone</span>',bad_name:'<span class="bt-bad">no name</span>',dup:'<span class="bt-dup">duplicate</span>',has:'<span class="bt-dup">already has a ticket</span>',freedup:'<span class="bt-bad">rejected · already has a free ticket</span>',maybe:'<span class="bt-dup">possible duplicate</span>'};
   const t=TYPES.find(x=>x.slug===$('bType').value);
   const det=BCOLS?`<p class="help" style="margin-top:12px">📋 Read as a table: names from <b>${esc(BCOLS.name.map(c=>BCOLS.header[c]||'column '+(c+1)).join(' + '))}</b>, phones from <b>${esc(BCOLS.header[BCOLS.phone]||'column '+(BCOLS.phone+1))}</b>. Wrong? Change it below.</p>${colPicker()}`:'';
-  $('bPreview').innerHTML=det+`<div class="bsum"><span>${BATCH.length} people found</span>${parseBatch.skipped?`<span>${parseBatch.skipped} unwanted rows skipped</span>`:''}<span class="bt-ok">${ok} will get tickets</span>${bad?`<span class="bt-bad">${bad} need fixing</span>`:''}${dup?`<span class="bt-dup">${dup} duplicates skipped</span>`:''}${has?`<span class="bt-dup">${has} already have a ticket</span>`:''}${maybe?`<span class="bt-dup">${maybe} possible duplicates (unticked)</span>`:''}</div>${has||maybe?`<p class="help">Checked against ${BATCH._ex} tickets already issued for <b>${esc(EV.name)}</b>. Rows marked <b>already has a ticket</b> or <b>possible duplicate</b> are unticked; tick any that are really different people.</p>`:''}
+  $('bPreview').innerHTML=det+`<div class="bsum"><span>${BATCH.length} people found</span>${parseBatch.skipped?`<span>${parseBatch.skipped} unwanted rows skipped</span>`:''}<span class="bt-ok">${ok} will get tickets</span>${bad?`<span class="bt-bad">${bad} need fixing</span>`:''}${dup?`<span class="bt-dup">${dup} duplicates skipped</span>`:''}${fdup?`<span class="bt-bad">${fdup} rejected (already have a free ticket)</span>`:''}${has?`<span class="bt-dup">${has} already have a ticket</span>`:''}${maybe?`<span class="bt-dup">${maybe} possible duplicates (unticked)</span>`:''}</div>${has||maybe?`<p class="help">Checked against ${BATCH._ex} tickets already issued for <b>${esc(EV.name)}</b>. Rows marked <b>already has a ticket</b> or <b>possible duplicate</b> are unticked; tick any that are really different people.</p>`:''}
    <div class="tw" style="max-height:420px;overflow:auto"><table><thead><tr><th></th><th>Name</th><th>Phone</th><th>Status</th></tr></thead><tbody>${BATCH.map((r,i)=>`<tr>
-     <td><input type="checkbox" data-i="${i}" ${r.include?'checked':''} ${r.status.startsWith('bad')?'disabled':''} style="width:auto"></td>
+     <td><input type="checkbox" data-i="${i}" ${r.include?'checked':''} ${r.status.startsWith('bad')||r.status==='freedup'?'disabled':''} style="width:auto"></td>
      <td><input data-n="${i}" value="${esc(r.name)}" style="padding:7px 9px;min-width:150px"></td>
      <td><input data-p="${i}" value="${esc(r.phone)}" placeholder="add phone" style="padding:7px 9px;min-width:130px" inputmode="tel"></td>
      <td>${lbl[r.status]}${r.info?`<div class="help" style="margin:2px 0 0;max-width:260px">${esc(r.info)}</div>`:''}</td></tr>`).join('')}</tbody></table></div>
